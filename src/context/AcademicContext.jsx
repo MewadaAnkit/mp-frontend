@@ -7,14 +7,16 @@ export const AcademicProvider = ({ children }) => {
   const [sessions, setSessions] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
   const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchMetadata = async () => {
     try {
-      const [sessRes, clsRes, settRes] = await Promise.all([
+      const [sessRes, clsRes, subRes, settRes] = await Promise.all([
         api.get('/academic/sessions'),
         api.get('/academic/classes'),
+        api.get('/subjects'),
         api.get('/settings')
       ]);
 
@@ -26,6 +28,10 @@ export const AcademicProvider = ({ children }) => {
 
       if (clsRes.data.success) {
         setClasses(clsRes.data.data);
+      }
+
+      if (subRes.data.success) {
+        setSubjects(subRes.data.data);
       }
 
       if (settRes.data.success) {
@@ -48,6 +54,7 @@ export const AcademicProvider = ({ children }) => {
       currentSession,
       setCurrentSession,
       classes,
+      subjects: subjects || [],
       settings,
       reloadMetadata: fetchMetadata,
       loading

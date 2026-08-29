@@ -8,7 +8,8 @@
     --canvas-bg: #f8fafc;
     --card-bg: #ffffff;
     --card-elevated: #ffffff;
-    --card-subtle: #f1f5f9;
+    --card-subtle: #f8fafc;
+    --card-hover: #f1f5f9;
     --border-color: #e2e8f0;
     --border-color-strong: #cbd5e1;
     --text-primary: #0f172a;
@@ -22,32 +23,33 @@
     --danger-soft: #fef2f2;
     --purple-soft: #faf5ff;
     --sidebar-bg: #ffffff;
-    --navbar-bg: rgba(255, 255, 255, 0.95);
-    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
-    --card-shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+    --navbar-bg: rgba(255, 255, 255, 0.85);
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+    --card-shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
   }
 
   html.dark {
     --canvas-bg: #090d16;
     --card-bg: #111827;
     --card-elevated: #151e32;
-    --card-subtle: #0d1424;
-    --border-color: #1f293d;
+    --card-subtle: #0e1526;
+    --card-hover: #172033;
+    --border-color: #1e293b;
     --border-color-strong: #334155;
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --text-muted: #94a3b8;
     --primary-color: #3b82f6;
     --primary-hover: #2563eb;
-    --primary-soft: rgba(59, 130, 246, 0.15);
-    --success-soft: rgba(16, 185, 129, 0.15);
-    --warning-soft: rgba(245, 158, 11, 0.15);
-    --danger-soft: rgba(239, 68, 68, 0.15);
-    --purple-soft: rgba(168, 85, 247, 0.15);
+    --primary-soft: rgba(59, 130, 246, 0.12);
+    --success-soft: rgba(16, 185, 129, 0.12);
+    --warning-soft: rgba(245, 158, 11, 0.12);
+    --danger-soft: rgba(239, 68, 68, 0.12);
+    --purple-soft: rgba(168, 85, 247, 0.12);
     --sidebar-bg: #0d1322;
-    --navbar-bg: rgba(13, 19, 34, 0.92);
-    --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
-    --card-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+    --navbar-bg: rgba(13, 19, 34, 0.88);
+    --card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+    --card-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
   }
 
   body {
@@ -58,7 +60,7 @@
   }
 }
 
-/* Light / Dark Mode Card & Layout Rules */
+/* Modern Card & Layout Rules */
 .app-canvas {
   background-color: var(--canvas-bg);
   color: var(--text-primary);
@@ -67,7 +69,7 @@
 .app-card {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 1.25rem;
+  border-radius: 1rem;
   box-shadow: var(--card-shadow);
   transition: all 0.2s ease;
 }
@@ -79,14 +81,14 @@
 .app-card-elevated {
   background-color: var(--card-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 1.25rem;
+  border-radius: 1rem;
   box-shadow: var(--card-shadow-lg);
 }
 
 .app-card-subtle {
   background-color: var(--card-subtle);
   border: 1px solid var(--border-color);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
 }
 
 /* Form Controls */
@@ -94,7 +96,7 @@
   background-color: var(--card-bg) !important;
   color: var(--text-primary) !important;
   border: 1px solid var(--border-color) !important;
-  border-radius: 0.75rem;
+  border-radius: 0.65rem;
   padding: 0.55rem 0.85rem;
   font-size: 0.8125rem;
   transition: all 0.15s ease;
@@ -130,10 +132,10 @@ select.app-input option {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: #ffffff !important;
   font-weight: 700;
-  border-radius: 0.75rem;
+  border-radius: 0.65rem;
   padding: 0.55rem 1.1rem;
   font-size: 0.8125rem;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -144,7 +146,7 @@ select.app-input option {
 .app-btn-primary:hover {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
 }
 
 .app-btn-secondary {
@@ -152,7 +154,7 @@ select.app-input option {
   color: var(--text-primary) !important;
   border: 1px solid var(--border-color);
   font-weight: 700;
-  border-radius: 0.75rem;
+  border-radius: 0.65rem;
   padding: 0.55rem 1.1rem;
   font-size: 0.8125rem;
   transition: all 0.15s ease;
@@ -163,17 +165,18 @@ select.app-input option {
 }
 
 .app-btn-secondary:hover {
-  background-color: var(--border-color-strong);
+  background-color: var(--card-hover);
+  border-color: var(--border-color-strong);
 }
 
 .app-btn-success {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff !important;
   font-weight: 700;
-  border-radius: 0.75rem;
+  border-radius: 0.65rem;
   padding: 0.55rem 1.1rem;
   font-size: 0.8125rem;
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 1px 3px rgba(5, 150, 105, 0.2);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -190,10 +193,10 @@ select.app-input option {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
   color: #ffffff !important;
   font-weight: 700;
-  border-radius: 0.75rem;
+  border-radius: 0.65rem;
   padding: 0.55rem 1.1rem;
   font-size: 0.8125rem;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.2);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -205,10 +208,10 @@ select.app-input option {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
   color: #ffffff !important;
   font-weight: 700;
-  border-radius: 0.75rem;
+  border-radius: 0.65rem;
   padding: 0.55rem 1.1rem;
   font-size: 0.8125rem;
-  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.25);
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.2);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -220,9 +223,9 @@ select.app-input option {
 .app-badge-green {
   background-color: var(--success-soft);
   color: #059669;
-  border: 1px solid rgba(5, 150, 105, 0.25);
-  font-weight: 800;
-  padding: 0.25rem 0.65rem;
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
   border-radius: 9999px;
   font-size: 0.6875rem;
   display: inline-flex;
@@ -237,9 +240,9 @@ html.dark .app-badge-green {
 .app-badge-blue {
   background-color: var(--primary-soft);
   color: #2563eb;
-  border: 1px solid rgba(37, 99, 235, 0.25);
-  font-weight: 800;
-  padding: 0.25rem 0.65rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
   border-radius: 9999px;
   font-size: 0.6875rem;
   display: inline-flex;
@@ -251,12 +254,46 @@ html.dark .app-badge-blue {
   color: #60a5fa;
 }
 
+.app-badge-purple {
+  background-color: var(--purple-soft);
+  color: #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+html.dark .app-badge-purple {
+  color: #c084fc;
+}
+
+.app-badge-amber {
+  background-color: var(--warning-soft);
+  color: #d97706;
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+html.dark .app-badge-amber {
+  color: #fbbf24;
+}
+
 .app-badge-red {
   background-color: var(--danger-soft);
   color: #dc2626;
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  font-weight: 800;
-  padding: 0.25rem 0.65rem;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
   border-radius: 9999px;
   font-size: 0.6875rem;
   display: inline-flex;
@@ -266,6 +303,19 @@ html.dark .app-badge-blue {
 
 html.dark .app-badge-red {
   color: #f87171;
+}
+
+.app-badge-slate {
+  background-color: var(--card-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 /* Scrollbars */

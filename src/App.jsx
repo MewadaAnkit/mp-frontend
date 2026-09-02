@@ -39,9 +39,10 @@ import CollectFeeDesk from './pages/finance/CollectFeeDesk';
 import FeeStructures from './pages/finance/FeeStructures';
 import TransactionsList from './pages/finance/TransactionsList';
 
-// Examinations & Results (Existing Engine)
+// Examinations & Results (Existing Engine & Exam Schedule)
 import SchemeList from './pages/examinations/SchemeList';
 import ExaminationList from './pages/examinations/ExaminationList';
+import ExamScheduleManager from './pages/examinations/ExamScheduleManager';
 import MarksEntryPage from './pages/examinations/MarksEntryPage';
 import ResultApprovalWorkflow from './pages/results/ResultApprovalWorkflow';
 import PublishedResults from './pages/results/PublishedResults';
@@ -118,10 +119,10 @@ export default function App() {
                   {/* Admissions */}
                   <Route path="admissions" element={<AdmissionsPipeline />} />
 
-                  {/* Students */}
+                  {/* Students — BUG-023 FIX: promotion route MUST be before /:id wildcard */}
                   <Route path="students" element={<StudentList />} />
-                  <Route path="students/:id" element={<StudentProfile360 />} />
                   <Route path="students/promotion" element={<StudentPromotion />} />
+                  <Route path="students/:id" element={<StudentProfile360 />} />
 
                   {/* Staff & Faculty */}
                   <Route path="staff" element={<StaffManagement />} />
@@ -145,6 +146,7 @@ export default function App() {
                   {/* Examinations & Results */}
                   <Route path="examinations/schemes" element={<SchemeList />} />
                   <Route path="examinations" element={<ExaminationList />} />
+                  <Route path="examinations/schedule" element={<ExamScheduleManager />} />
                   <Route path="examinations/marks-entry" element={<MarksEntryPage />} />
                   <Route path="results/approval" element={<ResultApprovalWorkflow />} />
                   <Route path="results/published" element={<PublishedResults />} />

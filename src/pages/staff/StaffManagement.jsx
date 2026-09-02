@@ -18,9 +18,11 @@ import { useAcademic } from '../../context/AcademicContext';
 import StatWidget from '../../components/ui/StatWidget';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import FormField from '../../components/ui/FormField';
 import Tabs from '../../components/ui/Tabs';
 import EmptyState from '../../components/ui/EmptyState';
 import { TableSkeleton } from '../../components/ui/SkeletonLoader';
+import { validateName, validatePhone, validateEmail, sanitizeText } from '../../utils/validation';
 import toast from 'react-hot-toast';
 
 export default function StaffManagement() {
@@ -31,6 +33,7 @@ export default function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [staffErrors, setStaffErrors] = useState({});
 
   // Modals
   const [staffModalOpen, setStaffModalOpen] = useState(false);
@@ -92,18 +95,61 @@ export default function StaffManagement() {
     }
   };
 
+  const validateStaff = () => {
+    const errs = {};
+    const nameErr = validateName(staffForm.fullName, 'Full Name', true);
+    if (nameErr) errs.fullName = nameErr;
+
+    const phoneErr = validatePhone(staffForm.phone, 'Phone Number', true);
+    if (phoneErr) errs.phone = phoneErr;
+
+    if (staffForm.email) {
+      const emailErr = validateEmail(staffForm.email, 'Email Address', false);
+      if (emailErr) errs.email = emailErr;
+    }
+
+    if (!staffForm.designation || !staffForm.designation.trim()) {
+      errs.designation = 'Designation is required';
+    } else if (staffForm.designation.trim().length < 2) {
+      errs.designation = 'Designation must be at least 2 characters';
+    }
+
+    if (staffForm.experienceYears < 0 || staffForm.experienceYears > 60) {
+      errs.experienceYears = 'Experience must be between 0 and 60 years';
+    }
+
+    return errs;
+  };
+
   const handleSaveStaff = async (e) => {
     e.preventDefault();
+    const errs = validateStaff();
+    if (Object.keys(errs).length > 0) {
+      setStaffErrors(errs);
+      toast.error('Please fix the errors in the form');
+      return;
+    }
+    setStaffErrors({});
+
     try {
+      const payload = {
+        ...staffForm,
+        fullName: sanitizeText(staffForm.fullName),
+        designation: sanitizeText(staffForm.designation),
+        qualification: sanitizeText(staffForm.qualification),
+        phone: staffForm.phone.trim().replace(/[\s-+]/g, '')
+      };
+
       if (editingStaff) {
-        await api.put(`/staff/${editingStaff._id}`, staffForm);
+        await api.put(`/staff/${editingStaff._id}`, payload);
         toast.success('Staff details updated');
       } else {
-        await api.post('/staff', staffForm);
+        await api.post('/staff', payload);
         toast.success('New staff member added');
       }
       setStaffModalOpen(false);
       setEditingStaff(null);
+      setStaffErrors({});
       fetchStaff();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error saving staff member');
@@ -253,7 +299,7 @@ export default function StaffManagement() {
           {/* Filter Bar */}
           <div className="app-card p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div className="relative flex-1 w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={search}
@@ -429,44 +475,48 @@ export default function StaffManagement() {
       >
         <form onSubmit={handleSaveStaff} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Full Name *</label>
+            <FormField label="Full Name" required error={staffErrors.fullName}>
               <input
                 type="text"
-                required
                 value={staffForm.fullName}
-                onChange={(e) => setStaffForm({ ...staffForm, fullName: e.target.value })}
+                onChange={(e) => {
+                  setStaffForm({ ...staffForm, fullName: e.target.value });
+                  if (staffErrors.fullName) setStaffErrors({ ...staffErrors, fullName: null });
+                }}
                 placeholder="e.g. Pooja Verma"
-                className="app-input w-full text-xs font-bold"
+                className={`app-input w-full text-xs font-bold ${staffErrors.fullName ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Phone Number *</label>
+            <FormField label="Phone Number" required error={staffErrors.phone}>
               <input
                 type="tel"
-                required
+                maxLength={10}
                 value={staffForm.phone}
-                onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
-                placeholder="10-digit mobile"
-                className="app-input w-full text-xs"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setStaffForm({ ...staffForm, phone: val });
+                  if (staffErrors.phone) setStaffErrors({ ...staffErrors, phone: null });
+                }}
+                placeholder="10-digit mobile number"
+                className={`app-input w-full text-xs ${staffErrors.phone ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Designation *</label>
+            <FormField label="Designation" required error={staffErrors.designation}>
               <input
                 type="text"
-                required
                 value={staffForm.designation}
-                onChange={(e) => setStaffForm({ ...staffForm, designation: e.target.value })}
+                onChange={(e) => {
+                  setStaffForm({ ...staffForm, designation: e.target.value });
+                  if (staffErrors.designation) setStaffErrors({ ...staffErrors, designation: null });
+                }}
                 placeholder="e.g. TGT Mathematics"
-                className="app-input w-full text-xs"
+                className={`app-input w-full text-xs ${staffErrors.designation ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Department</label>
+            <FormField label="Department">
               <select
                 value={staffForm.department}
                 onChange={(e) => setStaffForm({ ...staffForm, department: e.target.value })}
@@ -479,10 +529,9 @@ export default function StaffManagement() {
                 <option value="SPORTS">Sports</option>
                 <option value="SUPPORT">Support</option>
               </select>
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Qualification</label>
+            <FormField label="Qualification">
               <input
                 type="text"
                 value={staffForm.qualification}
@@ -490,17 +539,21 @@ export default function StaffManagement() {
                 placeholder="e.g. M.Sc, B.Ed"
                 className="app-input w-full text-xs"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Experience (Years)</label>
+            <FormField label="Experience (Years)" error={staffErrors.experienceYears}>
               <input
                 type="number"
+                min="0"
+                max="60"
                 value={staffForm.experienceYears}
-                onChange={(e) => setStaffForm({ ...staffForm, experienceYears: Number(e.target.value) })}
-                className="app-input w-full text-xs"
+                onChange={(e) => {
+                  setStaffForm({ ...staffForm, experienceYears: Number(e.target.value) });
+                  if (staffErrors.experienceYears) setStaffErrors({ ...staffErrors, experienceYears: null });
+                }}
+                className={`app-input w-full text-xs ${staffErrors.experienceYears ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
-            </div>
+            </FormField>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">

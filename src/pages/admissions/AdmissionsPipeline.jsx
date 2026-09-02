@@ -20,14 +20,17 @@ import { useAcademic } from '../../context/AcademicContext';
 import StatWidget from '../../components/ui/StatWidget';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import FormField from '../../components/ui/FormField';
 import EmptyState from '../../components/ui/EmptyState';
 import { TableSkeleton } from '../../components/ui/SkeletonLoader';
+import { validateName, validatePhone, validateDob, sanitizeText } from '../../utils/validation';
 import toast from 'react-hot-toast';
 
 export default function AdmissionsPipeline() {
   const { currentSession, classes } = useAcademic();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [formErrors, setFormErrors] = useState({});
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
@@ -85,16 +88,53 @@ export default function AdmissionsPipeline() {
     }
   };
 
+  const validateInquiryForm = () => {
+    const errs = {};
+    const nameErr = validateName(formData.studentName, 'Student Full Name', true);
+    if (nameErr) errs.studentName = nameErr;
+
+    const phoneErr = validatePhone(formData.guardianPhone, 'Guardian Phone (WhatsApp)', true);
+    if (phoneErr) errs.guardianPhone = phoneErr;
+
+    if (formData.fatherName) {
+      const fatherErr = validateName(formData.fatherName, "Father's Name", false);
+      if (fatherErr) errs.fatherName = fatherErr;
+    }
+
+    if (formData.dob) {
+      const dobErr = validateDob(formData.dob, 'Date of Birth', false);
+      if (dobErr) errs.dob = dobErr;
+    }
+
+    return errs;
+  };
+
   const handleCreateInquiry = async (e) => {
     e.preventDefault();
+    const errs = validateInquiryForm();
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs);
+      toast.error('Please fix the errors in the form before submitting');
+      return;
+    }
+    setFormErrors({});
+
     try {
-      const res = await api.post('/admissions/inquiries', {
+      const payload = {
         ...formData,
+        studentName: sanitizeText(formData.studentName),
+        fatherName: sanitizeText(formData.fatherName),
+        previousSchool: sanitizeText(formData.previousSchool),
+        address: sanitizeText(formData.address),
+        guardianPhone: formData.guardianPhone.trim().replace(/[\s-+]/g, ''),
         academicSession: currentSession?.sessionName || '2025-26'
-      });
+      };
+
+      const res = await api.post('/admissions/inquiries', payload);
       if (res.data.success) {
         toast.success('Admission inquiry created successfully!');
         setNewModalOpen(false);
+        setFormErrors({});
         setFormData({
           studentName: '',
           gender: 'MALE',
@@ -226,7 +266,7 @@ export default function AdmissionsPipeline() {
       {/* Filters & Search */}
       <div className="app-card p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="flex-1 relative w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={search}
@@ -396,24 +436,20 @@ export default function AdmissionsPipeline() {
       >
         <form onSubmit={handleCreateInquiry} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Student Full Name *
-              </label>
+            <FormField label="Student Full Name" required error={formErrors.studentName}>
               <input
                 type="text"
-                required
                 value={formData.studentName}
-                onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, studentName: e.target.value });
+                  if (formErrors.studentName) setFormErrors({ ...formErrors, studentName: null });
+                }}
                 placeholder="e.g. Rahul Sharma"
-                className="app-input w-full text-xs"
+                className={`app-input w-full text-xs ${formErrors.studentName ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Class Applying For *
-              </label>
+            <FormField label="Class Applying For" required>
               <select
                 value={formData.appliedClass}
                 onChange={(e) => setFormData({ ...formData, appliedClass: e.target.value })}
@@ -425,10 +461,9 @@ export default function AdmissionsPipeline() {
                   </option>
                 ))}
               </select>
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Gender</label>
+            <FormField label="Gender">
               <select
                 value={formData.gender}
                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
@@ -438,65 +473,72 @@ export default function AdmissionsPipeline() {
                 <option value="FEMALE">Female</option>
                 <option value="OTHER">Other</option>
               </select>
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Date of Birth</label>
+            <FormField label="Date of Birth" error={formErrors.dob}>
               <input
                 type="date"
                 value={formData.dob}
-                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                className="app-input w-full text-xs"
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setFormData({ ...formData, dob: e.target.value });
+                  if (formErrors.dob) setFormErrors({ ...formErrors, dob: null });
+                }}
+                className={`app-input w-full text-xs ${formErrors.dob ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Father's Name</label>
+            <FormField label="Father's Name" error={formErrors.fatherName}>
               <input
                 type="text"
                 value={formData.fatherName}
-                onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, fatherName: e.target.value });
+                  if (formErrors.fatherName) setFormErrors({ ...formErrors, fatherName: null });
+                }}
                 placeholder="Father / Guardian Name"
-                className="app-input w-full text-xs"
+                className={`app-input w-full text-xs ${formErrors.fatherName ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Guardian Phone (WhatsApp) *
-              </label>
+            <FormField label="Guardian Phone (WhatsApp)" required error={formErrors.guardianPhone}>
               <input
                 type="tel"
-                required
+                maxLength={10}
                 value={formData.guardianPhone}
-                onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
-                placeholder="10-digit mobile number"
-                className="app-input w-full text-xs"
+                onChange={(e) => {
+                  // Only allow digits
+                  const val = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, guardianPhone: val });
+                  if (formErrors.guardianPhone) setFormErrors({ ...formErrors, guardianPhone: null });
+                }}
+                placeholder="10-digit mobile number (e.g. 9826012345)"
+                className={`app-input w-full text-xs ${formErrors.guardianPhone ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
               />
+            </FormField>
+
+            <div className="sm:col-span-2">
+              <FormField label="Previous School Attended">
+                <input
+                  type="text"
+                  value={formData.previousSchool}
+                  onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })}
+                  placeholder="School name & city"
+                  className="app-input w-full text-xs"
+                />
+              </FormField>
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Previous School Attended
-              </label>
-              <input
-                type="text"
-                value={formData.previousSchool}
-                onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })}
-                placeholder="School name & city"
-                className="app-input w-full text-xs"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Residential Address</label>
-              <textarea
-                rows={2}
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Full street address in MP"
-                className="app-input w-full text-xs"
-              />
+              <FormField label="Residential Address">
+                <textarea
+                  rows={2}
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Full street address in MP"
+                  className="app-input w-full text-xs"
+                />
+              </FormField>
             </div>
           </div>
 

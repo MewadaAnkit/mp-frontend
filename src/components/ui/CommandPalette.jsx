@@ -60,6 +60,7 @@ export default function CommandPalette({ isOpen, onClose }) {
   }, [query]);
 
   const quickActions = [
+    { label: isHindi ? 'परीक्षा समय-सारणी (Exam Schedule)' : 'Exam Timetable & Schedule', path: '/examinations/schedule', icon: Calendar, color: 'text-purple-500 bg-purple-500/10' },
     { label: isHindi ? 'शुल्क संग्रह पटल (Collect Fee)' : 'Collect Fee Payment', path: '/finance/collect', icon: CreditCard, color: 'text-emerald-500 bg-emerald-500/10' },
     { label: isHindi ? 'दैनिक उपस्थिति दर्ज करें' : 'Mark Daily Attendance', path: '/attendance', icon: CheckCircle2, color: 'text-blue-500 bg-blue-500/10' },
     { label: isHindi ? 'परीक्षा अंक दर्ज करें (Marks Entry)' : 'Enter Examination Marks', path: '/examinations/marks-entry', icon: Layers, color: 'text-purple-500 bg-purple-500/10' },

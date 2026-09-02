@@ -2,15 +2,23 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import { useAcademic } from '../../context/AcademicContext';
+import { useLanguage } from '../../context/LanguageContext';
+import PageHeader from '../../components/ui/PageHeader';
+import DataTable from '../../components/ui/DataTable';
+import Modal from '../../components/ui/Modal';
+import FormField from '../../components/ui/FormField';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
 import { Users, Plus, Search, Upload, History, UserCheck, Eye, Sparkles } from 'lucide-react';
-import Pagination from '../../components/common/Pagination';
+import { validateAdmissionNo, validateName, validatePhone, validateSamagraId, validateRollNo, sanitizeText } from '../../utils/validation';
 import toast from 'react-hot-toast';
 
 export default function StudentList() {
   const navigate = useNavigate();
   const { currentSession, classes } = useAcademic();
+  const { t, isHindi } = useLanguage();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [formErrors, setFormErrors] = useState({});
   const [selectedClass, setSelectedClass] = useState('ALL');
   const [selectedSection, setSelectedSection] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +53,7 @@ export default function StudentList() {
 
   const loadStudents = async () => {
     try {
+      setLoading(true);
       let url = `/students?sessionName=${currentSession?.sessionName || '2025-26'}`;
       if (selectedClass !== 'ALL') url += `&className=${selectedClass}`;
       if (selectedSection !== 'ALL') url += `&sectionName=${selectedSection}`;
@@ -53,7 +62,7 @@ export default function StudentList() {
       const res = await api.get(url);
       if (res.data.success) {
         setStudents(res.data.data);
-        setCurrentPage(1); // Reset to page 1 on filter/search change
+        setCurrentPage(1);
       }
     } catch (err) {
       console.error(err);
@@ -72,21 +81,81 @@ export default function StudentList() {
     return students.slice(start, start + pageSize);
   }, [students, currentPage, pageSize]);
 
+  const validateStudentForm = () => {
+    const errs = {};
+    const admErr = validateAdmissionNo(formData.admissionNo, true);
+    if (admErr) errs.admissionNo = admErr;
+
+    const nameErr = validateName(formData.studentName, 'Student Full Name', true);
+    if (nameErr) errs.studentName = nameErr;
+
+    if (formData.fatherName) {
+      const fatherErr = validateName(formData.fatherName, "Father's Name", false);
+      if (fatherErr) errs.fatherName = fatherErr;
+    }
+
+    if (formData.motherName) {
+      const motherErr = validateName(formData.motherName, "Mother's Name", false);
+      if (motherErr) errs.motherName = motherErr;
+    }
+
+    const rollErr = validateRollNo(formData.currentRollNo, true);
+    if (rollErr) errs.currentRollNo = rollErr;
+
+    if (formData.samagraId) {
+      const samagraErr = validateSamagraId(formData.samagraId, false);
+      if (samagraErr) errs.samagraId = samagraErr;
+    }
+
+    if (formData.mobileNo) {
+      const phoneErr = validatePhone(formData.mobileNo, 'Mobile number', false);
+      if (phoneErr) errs.mobileNo = phoneErr;
+    }
+
+    return errs;
+  };
+
   const handleCreateStudent = async (e) => {
     e.preventDefault();
+    const errs = validateStudentForm();
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs);
+      toast.error('Please fix the errors in the form before submitting');
+      return;
+    }
+    setFormErrors({});
+
     try {
       const payload = {
         ...formData,
+        admissionNo: formData.admissionNo.trim().toUpperCase(),
+        studentName: sanitizeText(formData.studentName),
+        fatherName: sanitizeText(formData.fatherName),
+        motherName: sanitizeText(formData.motherName),
+        samagraId: formData.samagraId.trim(),
+        currentStream: sanitizeText(formData.currentStream),
         currentSession: currentSession?.sessionName || '2025-26'
       };
       const res = await api.post('/students', payload);
       if (res.data.success) {
         toast.success(`Student ${formData.studentName} added successfully!`);
         setShowAddModal(false);
+        setFormErrors({});
         setFormData({
-          admissionNo: '', studentName: '', fatherName: '', motherName: '',
-          samagraId: '', mpBseRollNo: '', gender: 'MALE', dob: '', mobileNo: '',
-          address: '', currentClass: '9', currentSection: 'A', currentRollNo: '1', currentStream: ''
+          admissionNo: '',
+          studentName: '',
+          fatherName: '',
+          motherName: '',
+          samagraId: '',
+          mpBseRollNo: '',
+          gender: 'MALE',
+          dob: '',
+          mobileNo: '',
+          address: '',
+          currentClass: classes[0]?.className || '9',
+          currentSection: 'A',
+          currentRollNo: '1',
+          currentStream: ''
         });
         loadStudents();
       }
@@ -134,371 +203,410 @@ export default function StudentList() {
     }
   };
 
+  const columns = [
+    {
+      header: 'Roll / Adm',
+      sortable: true,
+      sortKey: 'currentRollNo',
+      accessor: (st) => (
+        <div>
+          <span className="font-extrabold text-blue-600 dark:text-blue-400">Roll #{st.currentRollNo}</span>
+          <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-mono font-semibold">
+            Adm: {st.admissionNo}
+          </span>
+        </div>
+      )
+    },
+    {
+      header: 'Student Name',
+      sortable: true,
+      sortKey: 'studentName',
+      accessor: (st) => (
+        <div>
+          <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{st.studentName}</p>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+            {st.gender} • {st.category || 'GEN'}
+          </span>
+        </div>
+      )
+    },
+    {
+      header: 'Class & Section',
+      sortable: true,
+      sortKey: 'currentClass',
+      accessor: (st) => (
+        <div>
+          <span className="font-bold text-slate-800 dark:text-slate-200">
+            Class {st.currentClass} - '{st.currentSection}'
+          </span>
+          {st.currentStream && (
+            <span className="block text-[10px] text-purple-600 dark:text-purple-400 font-extrabold">
+              Stream: {st.currentStream}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      header: 'Parent Details',
+      accessor: (st) => (
+        <div>
+          <p className="text-slate-700 dark:text-slate-300 font-medium">F: {st.fatherName || '—'}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">M: {st.motherName || '—'}</p>
+        </div>
+      )
+    },
+    {
+      header: 'Samagra / BSE ID',
+      accessor: (st) => (
+        <div>
+          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{st.samagraId || '—'}</span>
+          {st.mpBseRollNo && (
+            <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">
+              BSE: {st.mpBseRollNo}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      header: 'Actions',
+      className: 'text-right',
+      accessor: (st) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            onClick={() => navigate(`/students/${st._id}`)}
+            className="app-btn-primary text-xs py-1.5 px-3"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>360° Profile</span>
+          </button>
+          <button
+            onClick={() => viewStudentHistory(st._id)}
+            title="View Academic History"
+            className="app-btn-secondary text-xs py-1.5 px-2.5"
+          >
+            <History className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span>Student Management Directory</span>
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Complete student roster with historical session tracking and progression</p>
-        </div>
+      <PageHeader
+        title={t('students.title', 'Student Management Directory')}
+        subtitle={t('students.subtitle', 'Complete student roster with historical session tracking and 360° academic progression')}
+        icon={Users}
+        breadcrumbs={[{ label: 'Students' }, { label: 'Directory' }]}
+        badge={
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
+            {students.length} Total Students
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="app-btn-secondary text-xs"
+            >
+              <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Bulk Import</span>
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="app-btn-primary text-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Student</span>
+            </button>
+          </div>
+        }
+      />
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setShowBulkModal(true)}
-            className="app-btn-secondary"
-          >
-            <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Bulk Import (Excel/CSV)</span>
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="app-btn-primary"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Student</span>
-          </button>
-        </div>
-      </div>
+      {/* Main Student Data Table */}
+      <DataTable
+        columns={columns}
+        data={paginatedStudents}
+        loading={loading}
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search by Name, Admission No, Samagra ID, Roll No..."
+        emptyIcon={Users}
+        emptyTitle="No student records found"
+        emptyDescription="No students matched your search criteria. Try modifying your filter options or add a new student."
+        emptyActionLabel="Register First Student"
+        onEmptyAction={() => setShowAddModal(true)}
+        filterControls={
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="app-input text-xs font-bold min-w-[120px]"
+            >
+              <option value="ALL">All Classes</option>
+              {((classes && classes.length > 0) ? classes : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(c => ({ _id: c, className: c, displayName: `Class ${c}` }))).map((c) => (
+                <option key={c._id || c.className} value={c.className}>
+                  {c.displayName || `Class ${c.className}`}
+                </option>
+              ))}
+            </select>
 
-      {/* Filters Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 app-card p-4">
-        <div className="relative sm:col-span-2">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by Name, Admission No, Samagra ID, Roll No..."
-            className="w-full app-input pl-10"
-          />
-        </div>
-
-        <div>
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="w-full app-input font-bold"
-          >
-            <option value="ALL">All Classes</option>
-            {classes.map(c => (
-              <option key={c._id} value={c.className}>Class {c.className}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <select
-            value={selectedSection}
-            onChange={(e) => setSelectedSection(e.target.value)}
-            className="w-full app-input font-bold"
-          >
-            <option value="ALL">All Sections</option>
-            <option value="A">Section A</option>
-            <option value="B">Section B</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Student Table Card with Pagination */}
-      <div className="app-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-400 font-extrabold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="px-5 py-3.5">Roll / Adm</th>
-                <th className="px-5 py-3.5">Student Name</th>
-                <th className="px-5 py-3.5">Class & Section</th>
-                <th className="px-5 py-3.5">Parent Details</th>
-                <th className="px-5 py-3.5">Samagra / MP ID</th>
-                <th className="px-5 py-3.5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-900 dark:text-slate-200">
-              {paginatedStudents.length > 0 ? (
-                paginatedStudents.map((st) => (
-                  <tr key={st._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                    <td className="px-5 py-3.5">
-                      <span className="font-extrabold text-blue-600 dark:text-blue-400">Roll #{st.currentRollNo}</span>
-                      <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-mono font-semibold">Adm: {st.admissionNo}</span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <p className="font-bold text-slate-900 dark:text-white text-sm">{st.studentName}</p>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{st.gender} • {st.category || 'GEN'}</span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">Class {st.currentClass} - '{st.currentSection}'</span>
-                      {st.currentStream && (
-                        <span className="block text-[10px] text-purple-600 dark:text-purple-400 font-extrabold">Stream: {st.currentStream}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <p className="text-slate-700 dark:text-slate-300 font-medium">F: {st.fatherName || '-'}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">M: {st.motherName || '-'}</p>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{st.samagraId || '-'}</span>
-                      {st.mpBseRollNo && (
-                        <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">BSE: {st.mpBseRollNo}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => navigate(`/students/${st._id}`)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>360° Profile</span>
-                        </button>
-                        <button
-                          onClick={() => viewStudentHistory(st._id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition cursor-pointer"
-                        >
-                          <History className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-5 py-10 text-center text-slate-500 dark:text-slate-400 font-medium">
-                    No student records found matching the criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Reusable Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={students.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setCurrentPage(1);
-          }}
-          pageSizeOptions={[10, 25, 50, 100]}
-        />
-      </div>
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className="app-input text-xs font-bold min-w-[110px]"
+            >
+              <option value="ALL">All Sections</option>
+              <option value="A">Section A</option>
+              <option value="B">Section B</option>
+              <option value="C">Section C</option>
+              <option value="D">Section D</option>
+            </select>
+          </div>
+        }
+        pagination={{
+          page: currentPage,
+          totalPages: Math.ceil(students.length / pageSize) || 1,
+          totalItems: students.length,
+          limit: pageSize,
+          onPageChange: setCurrentPage
+        }}
+      />
 
       {/* Add Student Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="app-card-elevated p-6 max-w-xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Register New Student</h2>
-            <form onSubmit={handleCreateStudent} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Admission Number *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="MP2025001"
-                    value={formData.admissionNo}
-                    onChange={(e) => setFormData({ ...formData, admissionNo: e.target.value.toUpperCase() })}
-                    className="w-full app-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Student Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Full Name"
-                    value={formData.studentName}
-                    onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
-                    className="w-full app-input"
-                  />
-                </div>
-              </div>
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Register New Student"
+        subtitle="Create an official student record in the active academic session"
+        maxWidth="max-w-2xl"
+      >
+        <form onSubmit={handleCreateStudent} className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Admission Number" required error={formErrors.admissionNo}>
+              <input
+                type="text"
+                placeholder="MP2025001"
+                value={formData.admissionNo}
+                onChange={(e) => {
+                  setFormData({ ...formData, admissionNo: e.target.value.toUpperCase() });
+                  if (formErrors.admissionNo) setFormErrors({ ...formErrors, admissionNo: null });
+                }}
+                className={`w-full app-input font-mono font-bold ${formErrors.admissionNo ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
+              />
+            </FormField>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Father's Name</label>
-                  <input
-                    type="text"
-                    value={formData.fatherName}
-                    onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })}
-                    className="w-full app-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Mother's Name</label>
-                  <input
-                    type="text"
-                    value={formData.motherName}
-                    onChange={(e) => setFormData({ ...formData, motherName: e.target.value })}
-                    className="w-full app-input"
-                  />
-                </div>
-              </div>
+            <FormField label="Student Full Name" required error={formErrors.studentName}>
+              <input
+                type="text"
+                placeholder="Full Legal Name"
+                value={formData.studentName}
+                onChange={(e) => {
+                  setFormData({ ...formData, studentName: e.target.value });
+                  if (formErrors.studentName) setFormErrors({ ...formErrors, studentName: null });
+                }}
+                className={`w-full app-input ${formErrors.studentName ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
+              />
+            </FormField>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Class</label>
-                  <select
-                    value={formData.currentClass}
-                    onChange={(e) => setFormData({ ...formData, currentClass: e.target.value })}
-                    className="w-full app-input font-bold"
-                  >
-                    {classes.map(c => (
-                      <option key={c._id} value={c.className}>Class {c.className}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Section</label>
-                  <select
-                    value={formData.currentSection}
-                    onChange={(e) => setFormData({ ...formData, currentSection: e.target.value })}
-                    className="w-full app-input font-bold"
-                  >
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Roll Number</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.currentRollNo}
-                    onChange={(e) => setFormData({ ...formData, currentRollNo: e.target.value })}
-                    className="w-full app-input"
-                  />
-                </div>
-              </div>
+            <FormField label="Father's Name" error={formErrors.fatherName}>
+              <input
+                type="text"
+                placeholder="Father's Name"
+                value={formData.fatherName}
+                onChange={(e) => {
+                  setFormData({ ...formData, fatherName: e.target.value });
+                  if (formErrors.fatherName) setFormErrors({ ...formErrors, fatherName: null });
+                }}
+                className={`w-full app-input ${formErrors.fatherName ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
+              />
+            </FormField>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Samagra ID (MP 9 Digits)</label>
-                  <input
-                    type="text"
-                    placeholder="123456789"
-                    value={formData.samagraId}
-                    onChange={(e) => setFormData({ ...formData, samagraId: e.target.value })}
-                    className="w-full app-input font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Stream (Class 11/12)</label>
-                  <input
-                    type="text"
-                    placeholder="Science / Commerce / Arts"
-                    value={formData.currentStream}
-                    onChange={(e) => setFormData({ ...formData, currentStream: e.target.value })}
-                    className="w-full app-input"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="app-btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="app-btn-primary"
-                >
-                  Save Student
-                </button>
-              </div>
-            </form>
+            <FormField label="Mother's Name" error={formErrors.motherName}>
+              <input
+                type="text"
+                placeholder="Mother's Name"
+                value={formData.motherName}
+                onChange={(e) => {
+                  setFormData({ ...formData, motherName: e.target.value });
+                  if (formErrors.motherName) setFormErrors({ ...formErrors, motherName: null });
+                }}
+                className={`w-full app-input ${formErrors.motherName ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
+              />
+            </FormField>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <FormField label="Class" required>
+              <select
+                value={formData.currentClass}
+                onChange={(e) => setFormData({ ...formData, currentClass: e.target.value })}
+                className="w-full app-select font-bold"
+              >
+                {((classes && classes.length > 0) ? classes : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(c => ({ _id: c, className: c, displayName: `Class ${c}` }))).map((c) => (
+                  <option key={c._id || c.className} value={c.className}>
+                    {c.displayName || `Class ${c.className}`}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Section" required>
+              <select
+                value={formData.currentSection}
+                onChange={(e) => setFormData({ ...formData, currentSection: e.target.value })}
+                className="w-full app-input font-bold"
+              >
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+                <option value="D">Section D</option>
+              </select>
+            </FormField>
+
+            <FormField label="Roll Number" required error={formErrors.currentRollNo}>
+              <input
+                type="number"
+                min="1"
+                max="9999"
+                value={formData.currentRollNo}
+                onChange={(e) => {
+                  setFormData({ ...formData, currentRollNo: e.target.value });
+                  if (formErrors.currentRollNo) setFormErrors({ ...formErrors, currentRollNo: null });
+                }}
+                className={`w-full app-input font-mono font-bold ${formErrors.currentRollNo ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
+              />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Samagra ID (MP 9 Digits)" error={formErrors.samagraId}>
+              <input
+                type="text"
+                maxLength={9}
+                placeholder="123456789"
+                value={formData.samagraId}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setFormData({ ...formData, samagraId: val });
+                  if (formErrors.samagraId) setFormErrors({ ...formErrors, samagraId: null });
+                }}
+                className={`w-full app-input font-mono ${formErrors.samagraId ? '!border-rose-500 ring-1 !ring-rose-500/30' : ''}`}
+              />
+            </FormField>
+
+            <FormField label="Stream (Class 11/12)">
+              <input
+                type="text"
+                placeholder="Science / Commerce / Arts"
+                value={formData.currentStream}
+                onChange={(e) => setFormData({ ...formData, currentStream: e.target.value })}
+                className="w-full app-input"
+              />
+            </FormField>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="app-btn-secondary text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="app-btn-primary text-xs"
+            >
+              Save Student
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Bulk Import Modal */}
-      {showBulkModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="app-card-elevated p-6 max-w-md w-full shadow-2xl">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Bulk Import Students</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Upload an Excel (.xlsx/.xls) file with student records</p>
-            <form onSubmit={handleBulkImport} className="space-y-4 text-xs">
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-blue-500/50 transition cursor-pointer">
-                <input
-                  type="file"
-                  accept=".xlsx, .xls, .csv"
-                  onChange={(e) => setUploadFile(e.target.files[0])}
-                  className="w-full app-input file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"
-                />
-              </div>
-
-              <div className="text-[11px] text-slate-600 dark:text-slate-400 app-card-subtle p-3">
-                <p className="font-bold text-slate-900 dark:text-slate-200 mb-1">Expected Spreadsheet Columns:</p>
-                <p>AdmissionNo, StudentName, FatherName, MotherName, Class, Section, RollNo, SamagraId</p>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowBulkModal(false)}
-                  className="app-btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={importing}
-                  className="app-btn-success disabled:opacity-50"
-                >
-                  {importing ? 'Importing...' : 'Upload & Process'}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        title="Bulk Import Students"
+        subtitle="Upload an Excel (.xlsx / .xls) file to enroll multiple students at once"
+      >
+        <form onSubmit={handleBulkImport} className="space-y-4 text-xs">
+          <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center hover:border-blue-500/50 transition">
+            <input
+              type="file"
+              accept=".xlsx, .xls, .csv"
+              onChange={(e) => setUploadFile(e.target.files[0])}
+              className="w-full app-input file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="text-[11px] text-slate-600 dark:text-slate-400 app-card-subtle p-3.5 rounded-xl">
+            <p className="font-bold text-slate-900 dark:text-slate-200 mb-1">Expected Spreadsheet Columns:</p>
+            <p className="font-mono">AdmissionNo, StudentName, FatherName, MotherName, Class, Section, RollNo, SamagraId</p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowBulkModal(false)}
+              className="app-btn-secondary text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={importing}
+              className="app-btn-success text-xs"
+            >
+              {importing ? 'Importing...' : 'Upload & Process'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Student Progression History Modal */}
-      {selectedStudentHistory && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="app-card-elevated p-6 max-w-xl w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">{selectedStudentHistory.student.studentName}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-semibold">Admission No: {selectedStudentHistory.student.admissionNo}</p>
-              </div>
-              <button
-                onClick={() => setSelectedStudentHistory(null)}
-                className="text-xs px-2.5 py-1 app-btn-secondary"
-              >
-                Close
-              </button>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 tracking-wider mb-2">Permanent Academic Progression History</h4>
-              <div className="space-y-2">
-                {selectedStudentHistory.history.map((enr) => (
-                  <div key={enr._id} className="app-card-subtle p-3 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-bold text-slate-900 dark:text-white">Session {enr.sessionName}</span>
-                      <span className="block text-slate-500 dark:text-slate-400">Class {enr.className} ('{enr.sectionName}') • Roll #{enr.rollNo}</span>
-                      {enr.streamName && <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">Stream: {enr.streamName}</span>}
-                    </div>
-                    <span className="app-badge-green">
-                      {enr.status}
+      <Modal
+        isOpen={!!selectedStudentHistory}
+        onClose={() => setSelectedStudentHistory(null)}
+        title={selectedStudentHistory?.student?.studentName || 'Student Academic Progression'}
+        subtitle={`Admission No: ${selectedStudentHistory?.student?.admissionNo}`}
+      >
+        {selectedStudentHistory && (
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 tracking-wider">
+              Permanent Academic Progression History
+            </h4>
+            <div className="space-y-2">
+              {selectedStudentHistory.history?.map((enr) => (
+                <div
+                  key={enr._id}
+                  className="app-card-subtle p-3.5 flex items-center justify-between text-xs rounded-xl"
+                >
+                  <div>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      Session {enr.sessionName}
                     </span>
+                    <span className="block text-slate-500 dark:text-slate-400 text-[11px]">
+                      Class {enr.className} ('{enr.sectionName}') • Roll #{enr.rollNo}
+                    </span>
+                    {enr.streamName && (
+                      <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">
+                        Stream: {enr.streamName}
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
+                  <StatusBadge status={enr.status || 'ACTIVE'} size="xs" />
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
+

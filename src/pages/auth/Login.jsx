@@ -7,15 +7,32 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  // BUG-022 FIX: Inline field-level errors
+  const [errors, setErrors] = useState({});
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const validate = () => {
+    const errs = {};
+    if (!email.trim()) errs.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Please enter a valid email address';
+    if (!password) errs.password = 'Password is required';
+    else if (password.length < 6) errs.password = 'Password must be at least 6 characters';
+    return errs;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+    setErrors({});
     setLoading(true);
     const res = await login(email, password);
     setLoading(false);
-    if (res.success) {
+    if (res?.success) {
       navigate('/');
     }
   };
@@ -45,16 +62,16 @@ export default function Login() {
                 Official Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="email"
-                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(p => ({ ...p, email: '' })); }}
                   placeholder="admin@mpschool.edu.in"
-                  className="w-full app-input pl-10 py-2.5 text-xs font-semibold"
+                  className={`w-full app-input pl-10 py-2.5 text-xs font-semibold ${errors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
+              {errors.email && <p className="mt-1 text-red-500 text-[11px] font-semibold flex items-center gap-1">⚠ {errors.email}</p>}
             </div>
 
             <div>
@@ -62,16 +79,16 @@ export default function Login() {
                 Security Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="password"
-                  required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password: '' })); }}
                   placeholder="••••••••"
-                  className="w-full app-input pl-10 py-2.5 text-xs font-semibold"
+                  className={`w-full app-input pl-10 py-2.5 text-xs font-semibold ${errors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
               </div>
+              {errors.password && <p className="mt-1 text-red-500 text-[11px] font-semibold flex items-center gap-1">⚠ {errors.password}</p>}
             </div>
 
             <button

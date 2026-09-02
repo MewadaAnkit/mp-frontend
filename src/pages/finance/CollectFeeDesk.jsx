@@ -16,13 +16,15 @@ import {
 import api from '../../api/client';
 import { useAcademic } from '../../context/AcademicContext';
 import { useLanguage } from '../../context/LanguageContext';
+import PageHeader from '../../components/ui/PageHeader';
+import FormField from '../../components/ui/FormField';
 import StatWidget from '../../components/ui/StatWidget';
-import Badge from '../../components/ui/Badge';
+import Badge, { StatusBadge } from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
 
 export default function CollectFeeDesk() {
-  const { currentSession } = useAcademic();
+  const { currentSession, settings } = useAcademic();
   const { t, isHindi } = useLanguage();
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('search') || '';
@@ -53,7 +55,13 @@ export default function CollectFeeDesk() {
 
   const handleSearch = async (queryTerm) => {
     const q = queryTerm || searchQuery;
-    if (!q || q.trim().length < 2) return;
+    // BUG-029 FIX: Show feedback when search query is too short
+    if (!q || q.trim().length < 2) {
+      if (q && q.trim().length === 1) {
+        toast('Enter at least 2 characters to search', { icon: '🔍' });
+      }
+      return;
+    }
 
     try {
       setLoadingSearch(true);
@@ -83,17 +91,32 @@ export default function CollectFeeDesk() {
 
   const handleCollectPayment = async (e) => {
     e.preventDefault();
+    // BUG-004 FIX: Set submitting=true synchronously BEFORE any async work
+    // This prevents rapid double-click from firing two requests
+    if (submitting) return;
+    setSubmitting(true);
+
     if (!selectedStudentData) {
       toast.error('Please select a student first');
+      setSubmitting(false);
       return;
     }
     if (!amountPaid || Number(amountPaid) <= 0) {
       toast.error('Please enter a valid amount');
+      setSubmitting(false);
+      return;
+    }
+
+    // BUG-005 FIX: Validate overpayment on frontend before hitting the API
+    const paidNum = Number(amountPaid);
+    const balanceDue = ledger?.balanceAmount || 0;
+    if (balanceDue > 0 && paidNum > balanceDue * 1.05) {
+      toast.error(`Overpayment not allowed. Balance due is ₹${balanceDue.toFixed(2)}`);
+      setSubmitting(false);
       return;
     }
 
     try {
-      setSubmitting(true);
       const payload = {
         studentId: selectedStudentData.student._id,
         academicSession: currentSession?.sessionName || selectedStudentData.student.currentSession,
@@ -139,16 +162,12 @@ export default function CollectFeeDesk() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            {t('finance.collectDeskTitle', 'Fast Fee Collection Desk')}
-          </h1>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
-            {t('finance.collectDeskSubtitle', 'Search student, view live ledger dues, accept Cash/UPI/Bank payments, and generate official receipts')}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t('finance.collectDeskTitle', 'Fast Fee Collection Desk')}
+        subtitle={t('finance.collectDeskSubtitle', 'Search student, view live ledger dues, accept Cash/UPI/Bank payments, and generate official receipts')}
+        icon={CreditCard}
+        breadcrumbs={[{ label: 'Fees & Finance' }, { label: 'Collect Fee Desk' }]}
+      />
 
       {/* Student Search Bar */}
       <div className="app-card p-5 relative">
@@ -157,7 +176,7 @@ export default function CollectFeeDesk() {
         </label>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-blue-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-blue-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
@@ -170,7 +189,7 @@ export default function CollectFeeDesk() {
           <button
             onClick={() => handleSearch()}
             disabled={loadingSearch}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition cursor-pointer"
+            className="app-btn-primary"
           >
             {loadingSearch ? t('common.loading', 'Searching...') : t('finance.findStudentBtn', 'Find Student')}
           </button>
@@ -195,9 +214,7 @@ export default function CollectFeeDesk() {
                   <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
                     Dues: ₹{item.ledger?.balanceAmount?.toLocaleString('en-IN') || 0}
                   </p>
-                  <Badge variant={item.ledger?.status === 'PAID' ? 'success' : 'warning'} size="xs">
-                    {item.ledger?.status || 'PENDING'}
-                  </Badge>
+                  <StatusBadge status={item.ledger?.status || 'PENDING'} size="xs" />
                 </div>
               </button>
             ))}
@@ -206,7 +223,18 @@ export default function CollectFeeDesk() {
       </div>
 
       {/* Selected Student Dues Overview & Collection Form */}
-      {selectedStudentData && (
+      {selectedStudentData && !ledger && selectedStudentData.warning && (
+        <div className="app-card p-5 border border-amber-400/50 bg-amber-50/50 dark:bg-amber-500/5">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Fee Structure Not Configured</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">{selectedStudentData.warning}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedStudentData && ledger && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Student Summary Card */}
           <div className="app-card p-6 space-y-5">
@@ -263,10 +291,7 @@ export default function CollectFeeDesk() {
 
             <form onSubmit={handleCollectPayment} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Amount to Collect (₹) *
-                  </label>
+                <FormField label="Amount to Collect (₹)" required>
                   <input
                     type="number"
                     required
@@ -276,16 +301,13 @@ export default function CollectFeeDesk() {
                     placeholder="Enter amount in ₹"
                     className="app-input w-full text-base font-black text-emerald-600 dark:text-emerald-400"
                   />
-                </div>
+                </FormField>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Payment Mode *
-                  </label>
+                <FormField label="Payment Mode" required>
                   <select
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value)}
-                    className="app-select w-full text-xs font-bold"
+                    className="app-input w-full text-xs font-bold"
                   >
                     <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                     <option value="CASH">Cash at Counter</option>
@@ -293,12 +315,9 @@ export default function CollectFeeDesk() {
                     <option value="CHEQUE">Cheque / Demand Draft</option>
                     <option value="ONLINE">Online Portal</option>
                   </select>
-                </div>
+                </FormField>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Transaction ID / Cheque Ref No
-                  </label>
+                <FormField label="Transaction ID / Cheque Ref No">
                   <input
                     type="text"
                     value={transactionRef}
@@ -306,12 +325,9 @@ export default function CollectFeeDesk() {
                     placeholder="e.g. UPI Ref / Bank UTR / Cheque #"
                     className="app-input w-full text-xs font-mono"
                   />
-                </div>
+                </FormField>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Fee Discount / Concession (₹)
-                  </label>
+                <FormField label="Fee Discount / Concession (₹)">
                   <input
                     type="number"
                     min={0}
@@ -319,32 +335,30 @@ export default function CollectFeeDesk() {
                     onChange={(e) => setDiscountAmount(e.target.value)}
                     className="app-input w-full text-xs"
                   />
+                </FormField>
+
+                <div className="sm:col-span-2">
+                  <FormField label="Discount / Scholarship Reason (If applicable)">
+                    <input
+                      type="text"
+                      value={discountReason}
+                      onChange={(e) => setDiscountReason(e.target.value)}
+                      placeholder="e.g. Sibling discount, Merit scholarship, RTE quota"
+                      className="app-input w-full text-xs"
+                    />
+                  </FormField>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Discount / Scholarship Reason (If applicable)
-                  </label>
-                  <input
-                    type="text"
-                    value={discountReason}
-                    onChange={(e) => setDiscountReason(e.target.value)}
-                    placeholder="e.g. Sibling discount, Merit scholarship, RTE quota"
-                    className="app-input w-full text-xs"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Remarks / Receipt Note
-                  </label>
-                  <input
-                    type="text"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder="Optional receipt notes..."
-                    className="app-input w-full text-xs"
-                  />
+                  <FormField label="Remarks / Receipt Note">
+                    <input
+                      type="text"
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      placeholder="Optional receipt notes..."
+                      className="app-input w-full text-xs"
+                    />
+                  </FormField>
                 </div>
               </div>
 
@@ -352,7 +366,7 @@ export default function CollectFeeDesk() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/25 transition cursor-pointer"
+                  className="app-btn-success text-xs font-extrabold"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{submitting ? 'Processing Payment...' : `Confirm & Collect ₹${amountPaid || '0'}`}</span>
@@ -376,9 +390,9 @@ export default function CollectFeeDesk() {
             <div id="printable-receipt" className="p-6 rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0d1322] text-slate-900 dark:text-white space-y-4">
               <div className="text-center border-b border-slate-200 dark:border-slate-800 pb-3">
                 <h2 className="font-black text-base tracking-tight text-blue-600 dark:text-blue-400">
-                  GOVERNMENT MODEL HIGHER SECONDARY SCHOOL OF EXCELLENCE
+                  {settings?.schoolName || 'MADHYA PRADESH EXCELLENCE HIGHER SECONDARY SCHOOL'}
                 </h2>
-                <p className="text-[11px] text-slate-500">Shivaji Nagar, Bhopal, Madhya Pradesh</p>
+                <p className="text-[11px] text-slate-500">{settings?.address || 'Madhya Pradesh, India'}</p>
                 <p className="text-[10px] font-bold text-slate-400 mt-0.5">FEE PAYMENT RECEIPT (OFFICIAL COPY)</p>
               </div>
 
@@ -429,7 +443,7 @@ export default function CollectFeeDesk() {
 
               <div className="flex justify-between items-end pt-4 text-[10px] text-slate-400">
                 <div>
-                  <p>Collected By: {issuedReceipt.collectedByName}</p>
+                  <p>Collected By: {issuedReceipt.collectedByName || 'School Accounts'}</p>
                   <p>This is a computer generated digital fee receipt.</p>
                 </div>
                 <div className="text-center">
@@ -442,7 +456,7 @@ export default function CollectFeeDesk() {
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20"
+                className="app-btn-primary"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print Official Receipt</span>
@@ -454,3 +468,4 @@ export default function CollectFeeDesk() {
     </div>
   );
 }
+

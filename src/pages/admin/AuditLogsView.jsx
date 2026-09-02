@@ -53,7 +53,7 @@ export default function AuditLogsView() {
       {/* Filters Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 app-card p-4">
         <div className="relative sm:col-span-2">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchTerm}

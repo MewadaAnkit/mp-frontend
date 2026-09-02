@@ -24,6 +24,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import StatWidget from '../../components/ui/StatWidget';
+import PageHeader from '../../components/ui/PageHeader';
 import Badge from '../../components/ui/Badge';
 import { CardSkeleton } from '../../components/ui/SkeletonLoader';
 
@@ -114,43 +115,44 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Role View Preview Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <School className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span>{schoolTitle}</span>
-          </h1>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-            {t('common.session', 'Session')}: <strong className="text-blue-600 dark:text-blue-400">{currentSession?.sessionName}</strong> • {isHindi ? 'म.प्र. बोर्ड संबद्धता: MPBSE-SCH-712049' : 'MPBSE Affiliation: MPBSE-SCH-712049'}
-          </p>
-        </div>
-
-        {/* Role View Toggle */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl text-xs font-bold">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider px-2 font-black hidden lg:inline">
-            {t('dashboard.roleView', 'Role View')}:
+      {/* Page Header */}
+      <PageHeader
+        title={schoolTitle}
+        subtitle={`${t('common.session', 'Session')}: ${currentSession?.sessionName || '2025-26'} • ${
+          isHindi ? 'म.प्र. बोर्ड संबद्धता: MPBSE-SCH-712049' : 'MPBSE Affiliation: MPBSE-SCH-712049'
+        }`}
+        icon={School}
+        badge={
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
+            {currentSession?.sessionName}
           </span>
-          {[
-            { id: 'PRINCIPAL', label: t('dashboard.principalView', 'Principal / Admin') },
-            { id: 'TEACHER', label: t('dashboard.teacherView', 'Teacher') },
-            { id: 'ACCOUNTANT', label: t('dashboard.accountantView', 'Accountant') },
-            { id: 'PARENT', label: t('dashboard.parentView', 'Parent') }
-          ].map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setActiveRoleView(r.id)}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                activeRoleView === r.id
-                  ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-xs font-black'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-      </div>
+        }
+        actions={
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl text-xs font-bold">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider px-2 font-black hidden lg:inline">
+              {t('dashboard.roleView', 'Role View')}:
+            </span>
+            {[
+              { id: 'PRINCIPAL', label: t('dashboard.principalView', 'Principal / Admin') },
+              { id: 'TEACHER', label: t('dashboard.teacherView', 'Teacher') },
+              { id: 'ACCOUNTANT', label: t('dashboard.accountantView', 'Accountant') },
+              { id: 'PARENT', label: t('dashboard.parentView', 'Parent') }
+            ].map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setActiveRoleView(r.id)}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                  activeRoleView === r.id
+                    ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* QUICK ACTIONS BAR */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -167,7 +169,7 @@ export default function AnalyticsDashboard() {
             <button
               key={i}
               onClick={() => navigate(act.path)}
-              className="app-card p-3 flex flex-col items-center justify-center text-center gap-2 hover:-translate-y-0.5 hover:shadow-md transition cursor-pointer group"
+              className="app-card p-3.5 flex flex-col items-center justify-center text-center gap-2 hover:-translate-y-0.5 hover:shadow-md transition cursor-pointer group"
             >
               <div className={`p-2.5 rounded-xl ${act.color}`}>
                 <Icon className="w-5 h-5" />

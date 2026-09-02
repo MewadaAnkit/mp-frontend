@@ -62,23 +62,40 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     >
       <div className="flex flex-col h-full">
         {/* Brand Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-800/80">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
-            <Award className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800/80">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+              <Award className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight tracking-tight">
+                {t('common.appName', 'MP SCHOOL ERP')}
+              </h1>
+              <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>{t('common.subtitle', 'Full Academic Suite')}</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight tracking-tight">
-              {t('common.appName', 'MP SCHOOL ERP')}
-            </h1>
-            <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
-              <span>{t('common.subtitle', 'Full Academic Suite')}</span>
-            </p>
-          </div>
+          {setIsOpen && (
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
+            >
+              <ChevronDown className="w-5 h-5 rotate-90" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav
+          onClick={(e) => {
+            if (e.target.closest('a') && setIsOpen && window.innerWidth < 1024) {
+              setIsOpen(false);
+            }
+          }}
+          className="flex-1 px-3 py-3 space-y-1 overflow-y-auto custom-scrollbar"
+        >
           <NavLink to="/" end className={mainNavItemClass}>
             <LayoutDashboard className="w-4 h-4 text-blue-500" />
             <span>{t('nav.overview', 'Overview Dashboard')}</span>
@@ -211,11 +228,14 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             </button>
             {examsOpen && (
               <div className="pl-4 pr-1 py-1 space-y-1 border-l-2 border-slate-100 dark:border-slate-800 ml-3.5">
+                <NavLink to="/examinations" end className={subNavItemClass}>
+                  <span>{isHindi ? 'परीक्षा सेटअप (Exam Setup)' : 'Examination Setup'}</span>
+                </NavLink>
+                <NavLink to="/examinations/schedule" end className={subNavItemClass}>
+                  <span>{isHindi ? 'परीक्षा समय-सारणी (Exam Schedule)' : 'Exam Timetable / Schedule'}</span>
+                </NavLink>
                 <NavLink to="/examinations/schemes" end className={subNavItemClass}>
                   <span>{t('nav.schemesRules', 'MP Schemes & Rules')}</span>
-                </NavLink>
-                <NavLink to="/examinations" end className={subNavItemClass}>
-                  <span>{t('nav.examSchedules', 'Exam Schedules')}</span>
                 </NavLink>
                 <NavLink to="/examinations/marks-entry" end className={subNavItemClass}>
                   <span>{t('nav.marksEntry', 'Marks Entry (Spreadsheet)')}</span>

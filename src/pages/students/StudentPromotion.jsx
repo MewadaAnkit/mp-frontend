@@ -6,12 +6,30 @@ import toast from 'react-hot-toast';
 
 export default function StudentPromotion() {
   const { sessions, currentSession, classes, reloadMetadata } = useAcademic();
-  const [sourceClass, setSourceClass] = useState('9');
+  const [sourceClass, setSourceClass] = useState('');
   const [sourceSection, setSourceSection] = useState('A');
-  const [targetSession, setTargetSession] = useState('2026-27');
-  const [targetClass, setTargetClass] = useState('10');
+  // BUG-008 FIX: Default target session to first non-current session (not hardcoded '2026-27')
+  const [targetSession, setTargetSession] = useState('');
+  const [targetClass, setTargetClass] = useState('');
   const [targetSection, setTargetSection] = useState('A');
   const [targetStream, setTargetStream] = useState('');
+
+  // Initialize defaults from loaded sessions/classes
+  useEffect(() => {
+    if (classes && classes.length > 0 && !sourceClass) {
+      setSourceClass(classes[0].className);
+      setTargetClass(classes[0].className);
+    }
+  }, [classes]);
+
+  useEffect(() => {
+    if (sessions && sessions.length > 0 && !targetSession) {
+      // Default to first non-current session
+      const nonCurrent = sessions.find(s => !s.isCurrent);
+      if (nonCurrent) setTargetSession(nonCurrent.sessionName);
+      else setTargetSession(sessions[0].sessionName);
+    }
+  }, [sessions]);
 
   const [students, setStudents] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -50,6 +68,15 @@ export default function StudentPromotion() {
       toast.error('Please select at least one student');
       return;
     }
+    if (!targetSession) {
+      toast.error('Please select a valid target session');
+      return;
+    }
+    // Confirmation dialog for safety before mass-promotion
+    const confirmed = window.confirm(
+      `Are you sure you want to promote ${selectedIds.length} student(s) to Class ${targetClass}, Section ${targetSection} in session ${targetSession}?\n\nThis action will update all selected students' records.`
+    );
+    if (!confirmed) return;
     setPromoting(true);
     try {
       const res = await api.post('/students/promote', {

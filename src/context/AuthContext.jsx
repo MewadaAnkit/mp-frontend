@@ -47,7 +47,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // BUG-007 FIX: Invalidate JWT server-side by calling logout endpoint
+      await api.post('/auth/logout');
+    } catch (_) {
+      // Ignore errors — clear client state regardless
+    }
     localStorage.removeItem('mp_rms_token');
     localStorage.removeItem('mp_rms_user');
     setUser(null);

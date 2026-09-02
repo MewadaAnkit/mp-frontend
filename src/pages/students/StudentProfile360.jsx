@@ -79,7 +79,7 @@ export default function StudentProfile360() {
     { id: 'overview', label: 'Overview & Personal', icon: User },
     { id: 'academics', label: 'Academic History', icon: GraduationCap, badge: enrollments?.length },
     { id: 'fees', label: 'Fee Ledger & Payments', icon: CreditCard, badge: fee?.payments?.length },
-    { id: 'attendance', label: 'Attendance Record', icon: CheckCircle2, badge: `${attendance?.attendanceRate || 100}%` },
+    { id: 'attendance', label: 'Attendance Record', icon: CheckCircle2, badge: attendance?.attendanceRate != null ? `${attendance.attendanceRate}%` : 'N/A' },
     { id: 'results', label: 'Exam Results', icon: Award, badge: results?.length },
     { id: 'certificates', label: 'Certificates', icon: FileCheck, badge: certificates?.length }
   ];
@@ -341,7 +341,7 @@ export default function StudentProfile360() {
       {activeTab === 'attendance' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <StatWidget title="Attendance Rate" value={`${attendance?.attendanceRate || 100}%`} color="emerald" />
+            <StatWidget title="Attendance Rate" value={attendance?.attendanceRate != null ? `${attendance.attendanceRate}%` : 'N/A'} color="emerald" />
             <StatWidget title="Total Days Tracked" value={attendance?.totalDays || 0} color="blue" />
             <StatWidget title="Days Present" value={attendance?.presentCount || 0} color="teal" />
             <StatWidget title="Days Absent / Leave" value={(attendance?.totalDays || 0) - (attendance?.presentCount || 0)} color="rose" />

@@ -20,7 +20,12 @@ export const ThemeProvider = ({ children }) => {
   }, [theme]);
 
   const toggleTheme = () => {
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+    setTimeout(() => {
+      root.classList.remove('theme-transition');
+    }, 450);
   };
 
   return (

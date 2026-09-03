@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Briefcase,
   Plus,
@@ -21,6 +21,7 @@ import Modal from '../../components/ui/Modal';
 import FormField from '../../components/ui/FormField';
 import Tabs from '../../components/ui/Tabs';
 import EmptyState from '../../components/ui/EmptyState';
+import Pagination from '../../components/common/Pagination';
 import { TableSkeleton } from '../../components/ui/SkeletonLoader';
 import { validateName, validatePhone, validateEmail, sanitizeText } from '../../utils/validation';
 import toast from 'react-hot-toast';
@@ -34,6 +35,12 @@ export default function StaffManagement() {
   const [search, setSearch] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [staffErrors, setStaffErrors] = useState({});
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [allocPage, setAllocPage] = useState(1);
+  const [allocPageSize, setAllocPageSize] = useState(10);
 
   // Modals
   const [staffModalOpen, setStaffModalOpen] = useState(false);
@@ -94,6 +101,16 @@ export default function StaffManagement() {
       console.error('Failed to load allocations:', err);
     }
   };
+
+  const paginatedStaff = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return staffList.slice(start, start + pageSize);
+  }, [staffList, currentPage, pageSize]);
+
+  const paginatedAllocations = useMemo(() => {
+    const start = (allocPage - 1) * allocPageSize;
+    return allocations.slice(start, start + allocPageSize);
+  }, [allocations, allocPage, allocPageSize]);
 
   const validateStaff = () => {
     const errs = {};
@@ -240,10 +257,10 @@ export default function StaffManagement() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Staff & Teacher Management
           </h1>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Manage faculty, administrative employees, and class-subject teacher allocations
           </p>
         </div>
@@ -266,7 +283,7 @@ export default function StaffManagement() {
                 });
                 setStaffModalOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition cursor-pointer"
+              className="app-btn-primary"
             >
               <Plus className="w-4 h-4" />
               <span>Add Staff Member</span>
@@ -274,7 +291,7 @@ export default function StaffManagement() {
           ) : (
             <button
               onClick={() => setAllocModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition cursor-pointer"
+              className="app-btn-primary"
             >
               <Plus className="w-4 h-4" />
               <span>Assign Subject to Teacher</span>
@@ -285,20 +302,22 @@ export default function StaffManagement() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatWidget title="Total Staff" value={staffList.length} subtitle="Active on payroll" icon={Briefcase} color="blue" />
-        <StatWidget title="Teaching Faculty" value={academicStaffCount} subtitle="TGT, PGT & PRT Teachers" icon={GraduationCap} color="emerald" />
+        <StatWidget title="Total Staff" value={staffList.length} subtitle="Active on payroll" icon={Briefcase} color="emerald" />
+        <StatWidget title="Teaching Faculty" value={academicStaffCount} subtitle="TGT, PGT & PRT Teachers" icon={GraduationCap} color="blue" />
         <StatWidget title="Subject Allocations" value={allocations.length} subtitle={`Session: ${currentSession?.sessionName || '2025-26'}`} icon={Layers} color="purple" />
       </div>
 
       {/* Tabs */}
-      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+      <div>
+        <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+      </div>
 
       {/* TAB 1: STAFF DIRECTORY */}
       {activeTab === 'directory' && (
-        <div className="space-y-4">
-          {/* Filter Bar */}
-          <div className="app-card p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <div className="relative flex-1 w-full">
+        <div className="app-card overflow-hidden shadow-xs">
+          {/* Filter Bar Inside Card */}
+          <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className="relative flex-1 w-full max-w-md">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
@@ -315,7 +334,7 @@ export default function StaffManagement() {
                 setDepartmentFilter(e.target.value);
                 setTimeout(fetchStaff, 50);
               }}
-              className="app-select text-xs min-w-[150px]"
+              className="app-select text-xs min-w-[160px]"
             >
               <option value="">All Departments</option>
               <option value="ACADEMIC">Academic / Teaching</option>
@@ -327,67 +346,73 @@ export default function StaffManagement() {
             </select>
           </div>
 
-          <div className="app-card overflow-hidden">
+          <div>
             {loading ? (
               <div className="p-6">
                 <TableSkeleton rows={5} cols={5} />
               </div>
             ) : staffList.length === 0 ? (
-              <EmptyState
-                icon={Briefcase}
-                title="No staff members registered"
-                description="Add teachers and employees to manage assignments and payroll."
-                actionLabel="Add Staff"
-                onAction={() => setStaffModalOpen(true)}
-              />
+              <div className="p-8">
+                <EmptyState
+                  icon={Briefcase}
+                  title="No staff members registered"
+                  description="Add teachers and employees to manage assignments and payroll."
+                  actionLabel="Add Staff"
+                  onAction={() => setStaffModalOpen(true)}
+                />
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#131b2e]/60 font-extrabold uppercase text-slate-500 text-[11px]">
-                      <th className="py-3 px-4">Employee ID</th>
-                      <th className="py-3 px-4">Full Name</th>
-                      <th className="py-3 px-4">Designation & Dept</th>
-                      <th className="py-3 px-4">Contact</th>
-                      <th className="py-3 px-4">Qualification</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                    <tr className="border-b border-slate-200/80 dark:border-slate-800/80 bg-[#f8fafc] dark:bg-[#141d2f] font-bold uppercase text-slate-400 dark:text-slate-500 text-[11px] tracking-wider">
+                      <th className="py-3.5 px-6">Employee ID</th>
+                      <th className="py-3.5 px-6">Full Name</th>
+                      <th className="py-3.5 px-6">Designation & Dept</th>
+                      <th className="py-3.5 px-6">Contact</th>
+                      <th className="py-3.5 px-6">Qualification</th>
+                      <th className="py-3.5 px-6 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
-                    {staffList.map((st) => (
-                      <tr key={st._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                        <td className="py-3.5 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
-                          {st.employeeId}
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-medium text-slate-700 dark:text-slate-300">
+                    {paginatedStaff.map((st) => (
+                      <tr key={st._id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-4 px-6">
+                          <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-500/20">
+                            {st.employeeId}
+                          </span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <p className="font-bold text-slate-900 dark:text-white text-xs">{st.fullName}</p>
-                          <p className="text-[11px] text-slate-500 capitalize">{st.gender?.toLowerCase()}</p>
+                        <td className="py-4 px-6">
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">{st.fullName}</p>
+                          <p className="text-xs text-slate-400 capitalize mt-0.5">{st.gender?.toLowerCase()}</p>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <p className="font-bold text-slate-800 dark:text-slate-200">{st.designation}</p>
-                          <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
+                        <td className="py-4 px-6">
+                          <p className="font-semibold text-slate-800 dark:text-slate-200">{st.designation}</p>
+                          <span className="inline-block mt-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wide">
                             {st.department}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <p className="font-bold text-slate-800 dark:text-slate-200">{st.phone}</p>
-                          <p className="text-[11px] text-slate-500">{st.email || '-'}</p>
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-slate-800 dark:text-slate-200">{st.phone}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{st.email || '-'}</p>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <p className="font-semibold">{st.qualification || 'Graduate'}</p>
-                          <p className="text-[11px] text-slate-500">{st.experienceYears || 0} yrs exp</p>
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-slate-700 dark:text-slate-300">{st.qualification || 'Graduate'}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{st.experienceYears || 0} yrs exp</p>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="py-4 px-6 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => openEdit(st)}
-                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition"
+                              title="Edit"
+                              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center justify-center transition cursor-pointer"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteStaff(st._id)}
-                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition"
+                              title="Delete"
+                              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -400,60 +425,78 @@ export default function StaffManagement() {
               </div>
             )}
           </div>
+
+          {/* Integrated Pagination Footer */}
+          {staffList.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={staffList.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(sz) => {
+                setPageSize(sz);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </div>
       )}
 
       {/* TAB 2: TEACHER ALLOCATIONS */}
       {activeTab === 'allocations' && (
-        <div className="app-card overflow-hidden">
+        <div className="app-card overflow-hidden shadow-xs">
           {allocations.length === 0 ? (
-            <EmptyState
-              icon={Layers}
-              title="No subject allocations configured"
-              description="Assign teachers to classes, sections, and MP Board subjects."
-              actionLabel="Add Teacher Allocation"
-              onAction={() => setAllocModalOpen(true)}
-            />
+            <div className="p-8">
+              <EmptyState
+                icon={Layers}
+                title="No subject allocations configured"
+                description="Assign teachers to classes, sections, and MP Board subjects."
+                actionLabel="Add Teacher Allocation"
+                onAction={() => setAllocModalOpen(true)}
+              />
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#131b2e]/60 font-extrabold uppercase text-slate-500 text-[11px]">
-                    <th className="py-3 px-4">Teacher Name</th>
-                    <th className="py-3 px-4">Class & Section</th>
-                    <th className="py-3 px-4">Subject Assigned</th>
-                    <th className="py-3 px-4">Class Teacher Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                  <tr className="border-b border-slate-200/80 dark:border-slate-800/80 bg-[#f8fafc] dark:bg-[#141d2f] font-bold uppercase text-slate-400 dark:text-slate-500 text-[11px] tracking-wider">
+                    <th className="py-3.5 px-6">Teacher Name</th>
+                    <th className="py-3.5 px-6">Class & Section</th>
+                    <th className="py-3.5 px-6">Subject Assigned</th>
+                    <th className="py-3.5 px-6">Class Teacher Status</th>
+                    <th className="py-3.5 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
-                  {allocations.map((al) => (
-                    <tr key={al._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                      <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-medium text-slate-700 dark:text-slate-300">
+                  {paginatedAllocations.map((al) => (
+                    <tr key={al._id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-4 px-6 font-semibold text-slate-900 dark:text-white text-sm">
                         {al.teacherName}
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded">
+                      <td className="py-4 px-6">
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 px-2.5 py-1 rounded-full text-xs">
                           Class {al.className} - {al.sectionName}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <p className="font-bold text-slate-800 dark:text-slate-200">{al.subjectName}</p>
-                        <p className="text-[10px] text-slate-400 font-mono">{al.subjectCode}</p>
+                      <td className="py-4 px-6">
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{al.subjectName}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">{al.subjectCode}</p>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-4 px-6">
                         {al.isClassTeacher ? (
-                          <Badge variant="success" size="xs">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-500/20">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             Class Teacher
-                          </Badge>
+                          </span>
                         ) : (
-                          <span className="text-slate-400">Subject Faculty</span>
+                          <span className="text-slate-400 text-xs">Subject Faculty</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-4 px-6 text-right">
                         <button
-                          onClick={() => handleDeleteAllocation(al._id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition"
+                          onClick={() => handleDeleteAlloc(al._id)}
+                          title="Remove Allocation"
+                          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-600 inline-flex items-center justify-center transition cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -463,6 +506,20 @@ export default function StaffManagement() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {/* Integrated Allocations Pagination Footer */}
+          {allocations.length > 0 && (
+            <Pagination
+              currentPage={allocPage}
+              totalItems={allocations.length}
+              pageSize={allocPageSize}
+              onPageChange={setAllocPage}
+              onPageSizeChange={(sz) => {
+                setAllocPageSize(sz);
+                setAllocPage(1);
+              }}
+            />
           )}
         </div>
       )}
@@ -560,13 +617,13 @@ export default function StaffManagement() {
             <button
               type="button"
               onClick={() => setStaffModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400"
+              className="app-btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20"
+              className="app-btn-primary"
             >
               {editingStaff ? 'Update Staff Member' : 'Save Staff Member'}
             </button>
@@ -643,7 +700,7 @@ export default function StaffManagement() {
             >
               <option value="">-- Choose Subject --</option>
               {subjects.map((sub) => (
-                <option key={sub._id} value={sub.code}>
+                <option key={sub._id || sub.code} value={sub.code}>
                   {sub.name} ({sub.code})
                 </option>
               ))}
@@ -656,7 +713,7 @@ export default function StaffManagement() {
               id="classTeacherCheck"
               checked={allocForm.isClassTeacher}
               onChange={(e) => setAllocForm({ ...allocForm, isClassTeacher: e.target.checked })}
-              className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
             />
             <label htmlFor="classTeacherCheck" className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
               Designate as Class Teacher for this Section
@@ -667,15 +724,15 @@ export default function StaffManagement() {
             <button
               type="button"
               onClick={() => setAllocModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400"
+              className="app-btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20"
+              className="app-btn-primary"
             >
-              Save Allocation
+              Assign Teacher
             </button>
           </div>
         </form>

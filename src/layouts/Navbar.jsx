@@ -127,15 +127,15 @@ export default function Navbar({ toggleSidebar, openCommandPalette }) {
         </button>
 
         {/* User profile pill */}
-        <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-800">
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-black text-slate-900 dark:text-white leading-tight">{user?.name || 'Administrator'}</p>
-            <span className="inline-block text-[10px] text-blue-600 dark:text-blue-400 font-extrabold bg-blue-50 dark:bg-blue-500/15 px-2 py-0.2 rounded-md mt-0.5 uppercase tracking-wide">
+            <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{user?.name || 'Administrator'}</p>
+            <span className="inline-block text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.2 rounded-full mt-0.5 uppercase tracking-wide">
               {user?.role || 'Staff'}
             </span>
           </div>
 
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-white text-xs shadow-md shadow-blue-500/20 shrink-0">
+          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white text-xs shadow-xs shrink-0">
             {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
           </div>
 

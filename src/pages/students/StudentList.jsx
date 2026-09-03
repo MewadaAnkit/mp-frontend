@@ -372,7 +372,11 @@ export default function StudentList() {
           totalPages: Math.ceil(students.length / pageSize) || 1,
           totalItems: students.length,
           limit: pageSize,
-          onPageChange: setCurrentPage
+          onPageChange: setCurrentPage,
+          onPageSizeChange: (newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }
         }}
       />
 

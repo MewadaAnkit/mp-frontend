@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   CalendarDays,
   Clock,
@@ -9,7 +9,10 @@ import {
   Coffee,
   Trash2,
   Printer,
-  Sparkles
+  Sparkles,
+  Table,
+  LayoutGrid,
+  Edit
 } from 'lucide-react';
 import api from '../../api/client';
 import { useAcademic } from '../../context/AcademicContext';
@@ -28,7 +31,11 @@ export default function TimetableSchedule() {
   const [selectedDay, setSelectedDay] = useState('MONDAY');
   const [timetableData, setTimetableData] = useState([]);
   const [subjectsList, setSubjectsList] = useState([]);
+  const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // View Mode: 'table' (default) or 'grid' (cards)
+  const [viewMode, setViewMode] = useState('table');
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,8 +47,28 @@ export default function TimetableSchedule() {
     subjectName: '',
     teacherName: '',
     roomNo: 'Room 101',
-    isBreak: false
+    isBreak: false,
+    isCustomSubject: false
   });
+
+  // Load teachers for faculty dropdown
+  useEffect(() => {
+    api.get('/staff')
+      .then((res) => {
+        if (res.data.success) setStaffList(res.data.data || []);
+      })
+      .catch(() => setStaffList([]));
+  }, []);
+
+  // Class applicable subjects for dropdown
+  const classApplicableSubjects = useMemo(() => {
+    if (!subjectsList || subjectsList.length === 0) return [];
+    const filtered = subjectsList.filter((s) => {
+      if (!s.applicableClasses || s.applicableClasses.length === 0) return true;
+      return s.applicableClasses.includes(String(selectedClass).toUpperCase()) || s.applicableClasses.includes('ALL');
+    });
+    return filtered.length > 0 ? filtered : subjectsList;
+  }, [subjectsList, selectedClass]);
 
   const days = [
     { id: 'MONDAY', label: isHindi ? 'सोमवार (Monday)' : 'Monday' },
@@ -141,6 +168,21 @@ export default function TimetableSchedule() {
     }
   };
 
+  const handleEditPeriod = (slot) => {
+    setPeriodForm({
+      periodNumber: slot.periodNumber,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      subjectCode: slot.subjectCode || '',
+      subjectName: slot.subjectName || '',
+      teacherName: slot.teacherName || '',
+      roomNo: slot.roomNo || 'Room 101',
+      isBreak: !!slot.isBreak,
+      isCustomSubject: false
+    });
+    setModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -154,7 +196,37 @@ export default function TimetableSchedule() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          {/* View Toggle */}
+          <div className="flex items-center p-1 bg-slate-100 dark:bg-[#151d30] rounded-xl border border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+              title="Table View"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+              title="Cards Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Cards</span>
+            </button>
+          </div>
+
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition cursor-pointer"
@@ -162,21 +234,24 @@ export default function TimetableSchedule() {
             <Printer className="w-4 h-4" />
             <span>{t('timetable.printBtn', 'Print Timetable')}</span>
           </button>
+
           <button
             onClick={() => {
+              const defSub = classApplicableSubjects[0] || subjectsList[0];
               setPeriodForm({
                 periodNumber: timetableData.length + 1,
                 startTime: '08:30',
                 endTime: '09:15',
-                subjectCode: '',
-                subjectName: (subjectsList[0]?.name) || 'Mathematics',
+                subjectCode: defSub?.subjectCode || defSub?.code || '',
+                subjectName: defSub?.subjectName || defSub?.name || '',
                 teacherName: '',
                 roomNo: 'Room 101',
-                isBreak: false
+                isBreak: false,
+                isCustomSubject: false
               });
               setModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition cursor-pointer"
+            className="app-btn-primary text-xs cursor-pointer shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>{t('timetable.addPeriodBtn', 'Add Period Slot')}</span>
@@ -267,78 +342,233 @@ export default function TimetableSchedule() {
             }}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {timetableData.map((slot) => {
-              if (slot.isBreak) {
-                return (
-                  <div
-                    key={slot.periodNumber}
-                    className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                        <Coffee className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-sm">{isHindi ? 'मध्यांतर (Recess Break)' : 'Recess / Lunch Break'}</p>
-                        <p className="text-xs text-amber-700 dark:text-amber-400 font-bold">
-                          {slot.startTime} - {slot.endTime}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleDeletePeriod(slot.periodNumber)}
-                      className="p-1.5 text-amber-600 hover:text-rose-600 rounded transition cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              }
+          <>
+            {/* Table View (Default) */}
+            {viewMode === 'table' && (
+              <div className="bg-white dark:bg-[#111726] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/90 dark:bg-[#131b2e]/80 border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                        <th className="py-3.5 px-4 w-28 text-center">{isHindi ? 'पीरियड' : 'Period'}</th>
+                        <th className="py-3.5 px-4 w-40">{isHindi ? 'समय (Time Slot)' : 'Time Slot'}</th>
+                        <th className="py-3.5 px-4 min-w-[200px]">{isHindi ? 'विषय (Subject)' : 'Subject'}</th>
+                        <th className="py-3.5 px-4 min-w-[180px]">{isHindi ? 'शिक्षक (Faculty)' : 'Faculty / Teacher'}</th>
+                        <th className="py-3.5 px-4 w-32">{isHindi ? 'कक्ष (Room)' : 'Room'}</th>
+                        <th className="py-3.5 px-4 w-32">{isHindi ? 'प्रकार (Type)' : 'Type'}</th>
+                        <th className="py-3.5 px-4 w-24 text-right">{isHindi ? 'कार्य' : 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
+                      {timetableData.map((slot) => {
+                        if (slot.isBreak) {
+                          return (
+                            <tr key={slot.periodNumber} className="bg-amber-50/50 dark:bg-amber-950/20">
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
+                                  <Coffee className="w-3 h-3" />
+                                  <span>Break</span>
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 whitespace-nowrap font-mono font-bold text-amber-700 dark:text-amber-400">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>{slot.startTime} - {slot.endTime}</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 font-extrabold text-amber-900 dark:text-amber-300" colSpan={3}>
+                                {isHindi ? 'मध्यांतर (Recess / Lunch Break)' : 'Recess / Lunch Break'}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="app-badge-amber">Recess</span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePeriod(slot.periodNumber)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition cursor-pointer"
+                                  title="Delete Break"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        }
 
-              return (
-                <div
-                  key={slot.periodNumber}
-                  className="app-card p-5 space-y-4 hover:border-blue-500/40 transition flex flex-col justify-between"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 mb-1">
-                        {isHindi ? `पीरियड ${slot.periodNumber}` : `Period #${slot.periodNumber}`}
-                      </span>
-                      <h3 className="text-base font-black text-slate-900 dark:text-white">{slot.subjectName}</h3>
-                      {slot.subjectCode && (
-                        <p className="text-[11px] font-mono text-slate-400 font-bold">{slot.subjectCode}</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeletePeriod(slot.periodNumber)}
-                      className="p-1.5 text-slate-400 hover:text-rose-500 rounded transition cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                        return (
+                          <tr key={slot.periodNumber} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                            {/* Period # */}
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-500/20">
+                                #{slot.periodNumber}
+                              </span>
+                            </td>
 
-                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-blue-500" />
-                      <span className="font-bold">{slot.startTime} - {slot.endTime}</span>
-                    </div>
+                            {/* Time */}
+                            <td className="py-3.5 px-4 whitespace-nowrap font-mono font-bold text-slate-700 dark:text-slate-300">
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                                <span>{slot.startTime} - {slot.endTime}</span>
+                              </div>
+                            </td>
 
-                    <div className="flex items-center gap-2">
-                      <User className="w-3.5 h-3.5 text-purple-500" />
-                      <span>{slot.teacherName || (isHindi ? 'विषय शिक्षक' : 'Faculty')}</span>
-                    </div>
+                            {/* Subject */}
+                            <td className="py-3.5 px-4">
+                              <div className="space-y-0.5">
+                                <span className="font-bold text-slate-900 dark:text-white text-[13px] block">
+                                  {slot.subjectName}
+                                </span>
+                                {slot.subjectCode && (
+                                  <span className="text-[10px] font-mono text-slate-400 font-semibold block">
+                                    {slot.subjectCode}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
 
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>{slot.roomNo || 'Room 101'}</span>
-                    </div>
-                  </div>
+                            {/* Teacher */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                  <User className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                                  {slot.teacherName || (isHindi ? 'विषय शिक्षक' : 'Faculty')}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Room */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300 text-xs font-medium bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md border border-slate-200/60 dark:border-slate-700/60">
+                                <MapPin className="w-3 h-3 text-emerald-500" />
+                                <span>{slot.roomNo || 'Room 101'}</span>
+                              </span>
+                            </td>
+
+                            {/* Type */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span className="app-badge-blue font-bold">
+                                Academic
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditPeriod(slot)}
+                                  className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition cursor-pointer"
+                                  title="Edit Period Slot"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePeriod(slot.periodNumber)}
+                                  className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                                  title="Delete Period Slot"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+
+            {/* Cards View */}
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {timetableData.map((slot) => {
+                  if (slot.isBreak) {
+                    return (
+                      <div
+                        key={slot.periodNumber}
+                        className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                            <Coffee className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <div>
+                            <p className="font-extrabold text-sm">{isHindi ? 'मध्यांतर (Recess Break)' : 'Recess / Lunch Break'}</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-400 font-bold">
+                              {slot.startTime} - {slot.endTime}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeletePeriod(slot.periodNumber)}
+                          className="p-1.5 text-amber-600 hover:text-rose-600 rounded transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={slot.periodNumber}
+                      className="app-card p-5 space-y-4 hover:border-blue-500/40 transition flex flex-col justify-between"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 mb-1">
+                            {isHindi ? `पीरियड ${slot.periodNumber}` : `Period #${slot.periodNumber}`}
+                          </span>
+                          <h3 className="text-base font-black text-slate-900 dark:text-white">{slot.subjectName}</h3>
+                          {slot.subjectCode && (
+                            <p className="text-[11px] font-mono text-slate-400 font-bold">{slot.subjectCode}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditPeriod(slot)}
+                            className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition cursor-pointer"
+                            title="Edit Period Slot"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePeriod(slot.periodNumber)}
+                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded transition cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-blue-500" />
+                          <span className="font-bold">{slot.startTime} - {slot.endTime}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <User className="w-3.5 h-3.5 text-purple-500" />
+                          <span>{slot.teacherName || (isHindi ? 'विषय शिक्षक' : 'Faculty')}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{slot.roomNo || 'Room 101'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -409,38 +639,91 @@ export default function TimetableSchedule() {
             <>
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('common.name', 'Subject')} *
+                  {t('timetable.subject', 'Subject')} *
                 </label>
-                <select
-                  required
-                  value={periodForm.subjectName}
-                  onChange={(e) => {
-                    const sub = (subjectsList || []).find((s) => s.name === e.target.value);
-                    setPeriodForm({
-                      ...periodForm,
-                      subjectName: e.target.value,
-                      subjectCode: sub ? sub.code : ''
-                    });
-                  }}
-                  className="app-select w-full text-xs font-bold"
-                >
-                  <option value="">{isHindi ? '-- विषय चुनें --' : '-- Choose Subject --'}</option>
-                  {(subjectsList || []).map((sub) => (
-                    <option key={sub._id || sub.code || sub.name} value={sub.name}>
-                      {sub.name} {sub.code ? `(${sub.code})` : ''}
-                    </option>
-                  ))}
-                  {(!subjectsList || subjectsList.length === 0) && (
-                    <>
-                      <option value="Hindi">Hindi (101)</option>
-                      <option value="English">English (102)</option>
-                      <option value="Sanskrit">Sanskrit (103)</option>
-                      <option value="Mathematics">Mathematics (201)</option>
-                      <option value="Science">Science (202)</option>
-                      <option value="Social Science">Social Science (203)</option>
-                    </>
-                  )}
-                </select>
+                {periodForm.isCustomSubject ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      required
+                      value={periodForm.subjectName}
+                      onChange={(e) => setPeriodForm({ ...periodForm, subjectName: e.target.value })}
+                      placeholder="Type custom subject name..."
+                      className="app-input w-full text-xs font-bold"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      title="Back to subject list"
+                      onClick={() => setPeriodForm({ ...periodForm, isCustomSubject: false })}
+                      className="w-8 h-8 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={periodForm.subjectCode || periodForm.subjectName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__CUSTOM__') {
+                        setPeriodForm({ ...periodForm, isCustomSubject: true });
+                        return;
+                      }
+                      const sub = (subjectsList || []).find(
+                        (s) => (s.subjectCode || s.code) === val || (s.subjectName || s.name) === val || s._id === val
+                      );
+                      if (sub) {
+                        setPeriodForm({
+                          ...periodForm,
+                          subjectName: sub.subjectName || sub.name || val,
+                          subjectCode: sub.subjectCode || sub.code || ''
+                        });
+                      } else {
+                        setPeriodForm({
+                          ...periodForm,
+                          subjectName: val,
+                          subjectCode: ''
+                        });
+                      }
+                    }}
+                    className="app-select w-full text-xs font-bold"
+                  >
+                    <option value="">{isHindi ? '-- विषय चुनें --' : '-- Choose Subject --'}</option>
+                    {classApplicableSubjects.length > 0 && (
+                      <optgroup label={`Class ${selectedClass} Subjects`}>
+                        {classApplicableSubjects.map((sub) => {
+                          const name = sub.subjectName || sub.name || 'Subject';
+                          const code = sub.subjectCode || sub.code || '';
+                          return (
+                            <option key={sub._id || code || name} value={code || name}>
+                              {name} {code ? `(${code})` : ''}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    )}
+                    {subjectsList.length > classApplicableSubjects.length && (
+                      <optgroup label="Other Classes Subjects">
+                        {subjectsList
+                          .filter((s) => !classApplicableSubjects.includes(s))
+                          .map((sub) => {
+                            const name = sub.subjectName || sub.name || 'Subject';
+                            const code = sub.subjectCode || sub.code || '';
+                            return (
+                              <option key={sub._id || code || name} value={code || name}>
+                                {name} {code ? `(${code})` : ''}
+                              </option>
+                            );
+                          })}
+                      </optgroup>
+                    )}
+                    <optgroup label="Custom">
+                      <option value="__CUSTOM__">✏️ Custom Subject Name...</option>
+                    </optgroup>
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -448,13 +731,28 @@ export default function TimetableSchedule() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t('timetable.teacherName', 'Teacher Name')}
                   </label>
-                  <input
-                    type="text"
-                    value={periodForm.teacherName}
-                    onChange={(e) => setPeriodForm({ ...periodForm, teacherName: e.target.value })}
-                    placeholder="e.g. Pooja Verma"
-                    className="app-input w-full text-xs"
-                  />
+                  {staffList && staffList.length > 0 ? (
+                    <select
+                      value={periodForm.teacherName}
+                      onChange={(e) => setPeriodForm({ ...periodForm, teacherName: e.target.value })}
+                      className="app-select w-full text-xs font-medium"
+                    >
+                      <option value="">-- Select Teacher (Optional) --</option>
+                      {staffList.map((st) => (
+                        <option key={st._id} value={st.fullName}>
+                          {st.fullName} ({st.designation || 'Faculty'})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={periodForm.teacherName}
+                      onChange={(e) => setPeriodForm({ ...periodForm, teacherName: e.target.value })}
+                      placeholder="e.g. Pooja Verma"
+                      className="app-input w-full text-xs"
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -477,13 +775,13 @@ export default function TimetableSchedule() {
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer"
+              className="app-btn-secondary text-xs"
             >
               {t('common.cancel', 'Cancel')}
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 cursor-pointer"
+              className="app-btn-primary text-xs"
             >
               {t('common.save', 'Save Period Slot')}
             </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
@@ -51,6 +51,7 @@ export default function ExamScheduleManager() {
   const [schedules, setSchedules] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [subjectsList, setSubjectsList] = useState([]);
+  const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals
@@ -66,6 +67,25 @@ export default function ExamScheduleManager() {
   const [bulkEntries, setBulkEntries] = useState([]);
   const [detectedConflicts, setDetectedConflicts] = useState([]);
   const [savingBulk, setSavingBulk] = useState(false);
+
+  // Load staff list for invigilator dropdown
+  useEffect(() => {
+    api.get('/staff')
+      .then((res) => {
+        if (res.data.success) setStaffList(res.data.data || []);
+      })
+      .catch(() => setStaffList([]));
+  }, []);
+
+  // Class applicable subjects for dropdown
+  const classApplicableSubjects = useMemo(() => {
+    if (!subjectsList || subjectsList.length === 0) return [];
+    const filtered = subjectsList.filter((s) => {
+      if (!s.applicableClasses || s.applicableClasses.length === 0) return true;
+      return s.applicableClasses.includes(bulkClass) || s.applicableClasses.includes('ALL');
+    });
+    return filtered.length > 0 ? filtered : subjectsList;
+  }, [subjectsList, bulkClass]);
 
   // BUG-024 FIX: Set initial class from context when classes load
   useEffect(() => {
@@ -156,7 +176,7 @@ export default function ExamScheduleManager() {
   const initializeBulkBuilder = () => {
     // Filter subjects applicable for bulkClass
     const applicableSubs = (subjectsList || []).filter(
-      (s) => !s.applicableClasses || s.applicableClasses.includes(bulkClass) || s.applicableClasses.includes('ALL')
+      (s) => !s.applicableClasses || s.applicableClasses.length === 0 || s.applicableClasses.includes(bulkClass) || s.applicableClasses.includes('ALL')
     );
 
     const initialList = (applicableSubs.length > 0 ? applicableSubs : subjectsList.slice(0, 5)).map((sub, idx) => {
@@ -177,7 +197,8 @@ export default function ExamScheduleManager() {
         invigilatorName: '',
         instructions: 'Report 30 minutes before time. Carry School ID Card & Admit Card.',
         maxMarks: sub.totalMaxMarks || 100,
-        minPassingMarks: 33
+        minPassingMarks: 33,
+        isCustomSubject: false
       };
     });
 
@@ -200,6 +221,33 @@ export default function ExamScheduleManager() {
       }
     }
 
+    setBulkEntries(updated);
+  };
+
+  // Dedicated subject selection handler from class subjects dropdown
+  const handleBulkRowSubjectSelect = (index, subCodeOrName) => {
+    const updated = [...bulkEntries];
+    if (subCodeOrName === '__CUSTOM__') {
+      updated[index].isCustomSubject = true;
+      setBulkEntries(updated);
+      return;
+    }
+
+    const matched = (subjectsList || []).find(
+      (s) => (s.code || s.subjectCode) === subCodeOrName || s._id === subCodeOrName || (s.name || s.subjectName) === subCodeOrName
+    );
+
+    if (matched) {
+      updated[index].subjectId = matched._id;
+      updated[index].subjectName = matched.name || matched.subjectName || '';
+      updated[index].subjectCode = matched.code || matched.subjectCode || '';
+      updated[index].maxMarks = matched.totalMaxMarks || 100;
+      updated[index].minPassingMarks = matched.minPassingMarks || 33;
+      updated[index].isCustomSubject = false;
+    } else {
+      updated[index].subjectName = subCodeOrName;
+      updated[index].isCustomSubject = false;
+    }
     setBulkEntries(updated);
   };
 
@@ -793,14 +841,68 @@ export default function ExamScheduleManager() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                   {bulkEntries.map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="py-2.5 px-3">
-                        <input
-                          type="text"
-                          required
-                          value={row.subjectName}
-                          onChange={(e) => handleBulkRowChange(idx, 'subjectName', e.target.value)}
-                          className="app-input w-full text-xs font-bold"
-                        />
+                      <td className="py-2.5 px-3 min-w-[220px]">
+                        {row.isCustomSubject ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              required
+                              value={row.subjectName}
+                              onChange={(e) => handleBulkRowChange(idx, 'subjectName', e.target.value)}
+                              placeholder="Type custom subject name..."
+                              className="app-input w-full text-xs font-bold"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              title="Back to class subject dropdown"
+                              onClick={() => handleBulkRowChange(idx, 'isCustomSubject', false)}
+                              className="w-7 h-7 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center text-xs"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <select
+                            required
+                            value={row.subjectCode || row.subjectName || ''}
+                            onChange={(e) => handleBulkRowSubjectSelect(idx, e.target.value)}
+                            className="app-select w-full text-xs font-bold"
+                          >
+                            <option value="">-- Select Subject --</option>
+                            {classApplicableSubjects.length > 0 && (
+                              <optgroup label={`Class ${bulkClass} Subjects`}>
+                                {classApplicableSubjects.map((s) => {
+                                  const code = s.code || s.subjectCode || '';
+                                  const name = s.name || s.subjectName || 'Subject';
+                                  return (
+                                    <option key={s._id || code} value={code || name}>
+                                      {name} {code ? `(${code})` : ''}
+                                    </option>
+                                  );
+                                })}
+                              </optgroup>
+                            )}
+                            {subjectsList.length > classApplicableSubjects.length && (
+                              <optgroup label="Other Classes Subjects">
+                                {subjectsList
+                                  .filter((s) => !classApplicableSubjects.includes(s))
+                                  .map((s) => {
+                                    const code = s.code || s.subjectCode || '';
+                                    const name = s.name || s.subjectName || 'Subject';
+                                    return (
+                                      <option key={s._id || code} value={code || name}>
+                                        {name} {code ? `(${code})` : ''}
+                                      </option>
+                                    );
+                                  })}
+                              </optgroup>
+                            )}
+                            <optgroup label="Custom">
+                              <option value="__CUSTOM__">✏️ Custom Subject Name...</option>
+                            </optgroup>
+                          </select>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 min-w-[140px]">
                         <input
@@ -844,7 +946,7 @@ export default function ExamScheduleManager() {
                           <option value="PROJECT">Project</option>
                         </select>
                       </td>
-                      <td className="py-2.5 px-3 min-w-[130px]">
+                      <td className="py-2.5 px-3 min-w-[140px]">
                         <input
                           type="text"
                           value={row.roomOrHall}
@@ -853,20 +955,35 @@ export default function ExamScheduleManager() {
                           className="app-input w-full text-xs"
                         />
                       </td>
-                      <td className="py-2.5 px-3 min-w-[130px]">
-                        <input
-                          type="text"
-                          value={row.invigilatorName}
-                          onChange={(e) => handleBulkRowChange(idx, 'invigilatorName', e.target.value)}
-                          placeholder="Teacher Name"
-                          className="app-input w-full text-xs"
-                        />
+                      <td className="py-2.5 px-3 min-w-[160px]">
+                        {staffList && staffList.length > 0 ? (
+                          <select
+                            value={row.invigilatorName || ''}
+                            onChange={(e) => handleBulkRowChange(idx, 'invigilatorName', e.target.value)}
+                            className="app-select w-full text-xs font-medium"
+                          >
+                            <option value="">-- Select Invigilator --</option>
+                            {staffList.map((st) => (
+                              <option key={st._id} value={st.fullName}>
+                                {st.fullName} ({st.designation || 'Staff'})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={row.invigilatorName}
+                            onChange={(e) => handleBulkRowChange(idx, 'invigilatorName', e.target.value)}
+                            placeholder="Teacher Name"
+                            className="app-input w-full text-xs"
+                          />
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-right">
                         <button
                           type="button"
                           onClick={() => handleRemoveBulkRow(idx)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
+                          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-600 inline-flex items-center justify-center transition cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -883,7 +1000,7 @@ export default function ExamScheduleManager() {
                 type="button"
                 disabled={savingBulk}
                 onClick={() => handleSaveBulkSchedule('DRAFT')}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+                className="app-btn-secondary text-xs"
               >
                 {t('examSchedule.saveDraftBtn', 'Save as Draft')}
               </button>
@@ -892,9 +1009,9 @@ export default function ExamScheduleManager() {
                 type="button"
                 disabled={savingBulk}
                 onClick={() => handleSaveBulkSchedule('PUBLISHED')}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-extrabold text-white bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-500/20 transition cursor-pointer"
+                className="app-btn-primary text-xs"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-3.5 h-3.5" />
                 <span>{savingBulk ? 'Saving...' : t('examSchedule.publishScheduleBtn', 'Publish Timetable')}</span>
               </button>
             </div>
@@ -1185,13 +1302,39 @@ export default function ExamScheduleManager() {
           <form onSubmit={handleSaveSingleEdit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Subject Name *</label>
-              <input
-                type="text"
-                required
-                value={editingSlot.subjectName}
-                onChange={(e) => setEditingSlot({ ...editingSlot, subjectName: e.target.value })}
-                className="app-input w-full text-xs font-bold"
-              />
+              <select
+                value={editingSlot.subjectCode || editingSlot.subjectName || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const matched = (subjectsList || []).find(
+                    (s) => (s.code || s.subjectCode) === val || (s.name || s.subjectName) === val
+                  );
+                  if (matched) {
+                    setEditingSlot({
+                      ...editingSlot,
+                      subjectName: matched.name || matched.subjectName,
+                      subjectCode: matched.code || matched.subjectCode
+                    });
+                  } else {
+                    setEditingSlot({
+                      ...editingSlot,
+                      subjectName: val
+                    });
+                  }
+                }}
+                className="app-select w-full text-xs font-bold"
+              >
+                <option value="">-- Select Subject --</option>
+                {subjectsList.map((s) => {
+                  const code = s.code || s.subjectCode || '';
+                  const name = s.name || s.subjectName || 'Subject';
+                  return (
+                    <option key={s._id || code} value={code || name}>
+                      {name} {code ? `(${code})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1254,12 +1397,27 @@ export default function ExamScheduleManager() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Invigilator</label>
-                <input
-                  type="text"
-                  value={editingSlot.invigilatorName}
-                  onChange={(e) => setEditingSlot({ ...editingSlot, invigilatorName: e.target.value })}
-                  className="app-input w-full text-xs"
-                />
+                {staffList && staffList.length > 0 ? (
+                  <select
+                    value={editingSlot.invigilatorName || ''}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, invigilatorName: e.target.value })}
+                    className="app-select w-full text-xs font-medium"
+                  >
+                    <option value="">-- Select Invigilator (Optional) --</option>
+                    {staffList.map((st) => (
+                      <option key={st._id} value={st.fullName}>
+                        {st.fullName} ({st.designation || 'Staff'})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={editingSlot.invigilatorName}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, invigilatorName: e.target.value })}
+                    className="app-input w-full text-xs"
+                  />
+                )}
               </div>
             </div>
 
@@ -1267,13 +1425,13 @@ export default function ExamScheduleManager() {
               <button
                 type="button"
                 onClick={() => setSingleEditModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-500"
+                className="app-btn-secondary text-xs"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 rounded-xl shadow-md"
+                className="app-btn-primary text-xs"
               >
                 Save Changes
               </button>

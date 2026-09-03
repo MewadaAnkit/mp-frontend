@@ -8,57 +8,57 @@
     --canvas-bg: #f8fafc;
     --card-bg: #ffffff;
     --card-elevated: #ffffff;
-    --card-subtle: #f1f5f9;
-    --card-hover: #f8fafc;
+    --card-subtle: #f8fafc;
+    --card-hover: #f1f5f9;
     --border-color: #e2e8f0;
     --border-color-strong: #cbd5e1;
     --text-primary: #0f172a;
     --text-secondary: #334155;
     --text-muted: #64748b;
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --primary-soft: #eff6ff;
-    --success-color: #059669;
+    --primary-color: #10b981;
+    --primary-hover: #059669;
+    --primary-soft: #ecfdf5;
+    --success-color: #10b981;
     --success-soft: #ecfdf5;
-    --warning-color: #d97706;
+    --warning-color: #f59e0b;
     --warning-soft: #fffbeb;
-    --danger-color: #dc2626;
+    --danger-color: #ef4444;
     --danger-soft: #fef2f2;
-    --purple-color: #7c3aed;
-    --purple-soft: #faf5ff;
-    --cyan-color: #0891b2;
+    --purple-color: #8b5cf6;
+    --purple-soft: #f5f3ff;
+    --cyan-color: #06b6d4;
     --cyan-soft: #ecfeff;
     --sidebar-bg: #ffffff;
-    --navbar-bg: rgba(255, 255, 255, 0.85);
+    --navbar-bg: rgba(255, 255, 255, 0.9);
     --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
     --card-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     --card-shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
   }
 
   html.dark {
-    --canvas-bg: #090d16;
-    --card-bg: #111827;
-    --card-elevated: #151e32;
-    --card-subtle: #0e1526;
-    --card-hover: #172033;
+    --canvas-bg: #0b0f19;
+    --card-bg: #111726;
+    --card-elevated: #151d30;
+    --card-subtle: #0e1524;
+    --card-hover: #172136;
     --border-color: #1e293b;
     --border-color-strong: #334155;
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --text-muted: #94a3b8;
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
-    --primary-soft: rgba(59, 130, 246, 0.14);
+    --primary-color: #10b981;
+    --primary-hover: #34d399;
+    --primary-soft: rgba(16, 185, 129, 0.15);
     --success-color: #10b981;
-    --success-soft: rgba(16, 185, 129, 0.14);
+    --success-soft: rgba(16, 185, 129, 0.15);
     --warning-color: #f59e0b;
-    --warning-soft: rgba(245, 158, 11, 0.14);
+    --warning-soft: rgba(245, 158, 11, 0.15);
     --danger-color: #ef4444;
-    --danger-soft: rgba(239, 68, 68, 0.14);
+    --danger-soft: rgba(239, 68, 68, 0.15);
     --purple-color: #a855f7;
-    --purple-soft: rgba(168, 85, 247, 0.14);
+    --purple-soft: rgba(168, 85, 247, 0.15);
     --cyan-color: #06b6d4;
-    --cyan-soft: rgba(6, 182, 212, 0.14);
+    --cyan-soft: rgba(6, 182, 212, 0.15);
     --sidebar-bg: #0d1322;
     --navbar-bg: rgba(13, 19, 34, 0.88);
     --card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
@@ -76,6 +76,19 @@
   }
 }
 
+/* Buttery smooth theme transition */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              fill 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-delay: 0s !important;
+}
+
 /* Modern Card & Layout Rules */
 .app-canvas {
   background-color: var(--canvas-bg);
@@ -85,7 +98,7 @@
 .app-card {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 1rem;
+  border-radius: 1.25rem; /* rounded-2xl */
   box-shadow: var(--card-shadow);
   transition: all 0.2s ease;
 }
@@ -97,14 +110,14 @@
 .app-card-elevated {
   background-color: var(--card-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   box-shadow: var(--card-shadow-lg);
 }
 
 .app-card-subtle {
   background-color: var(--card-subtle);
   border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
 }
 
 /* Form Controls */
@@ -113,9 +126,9 @@
   background-color: var(--card-bg) !important;
   color: var(--text-primary) !important;
   border: 1px solid var(--border-color) !important;
-  border-radius: 0.65rem;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.8125rem;
+  border-radius: 0.75rem !important; /* rounded-xl */
+  padding: 0.625rem 0.95rem;
+  font-size: 0.875rem;
   transition: all 0.15s ease;
 }
 
@@ -156,8 +169,8 @@ input[type=number] {
 .app-input:focus,
 .app-select:focus {
   outline: none;
-  border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 3px var(--primary-soft);
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
 }
 
 .app-input::placeholder {
@@ -170,15 +183,15 @@ select.app-select option {
   color: var(--text-primary);
 }
 
-/* Button System */
+/* Button System - HelpNexus Style */
 .app-btn-primary {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background-color: #10b981;
   color: #ffffff !important;
-  font-weight: 700;
-  border-radius: 0.65rem;
-  padding: 0.55rem 1.1rem;
-  font-size: 0.8125rem;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+  font-weight: 600;
+  border-radius: 0.75rem; /* rounded-xl */
+  padding: 0.55rem 1.15rem;
+  font-size: 0.875rem;
+  box-shadow: 0 1px 2px 0 rgba(16, 185, 129, 0.2);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -189,9 +202,9 @@ select.app-select option {
 }
 
 .app-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background-color: #059669;
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
 }
 
 .app-btn-primary:disabled {

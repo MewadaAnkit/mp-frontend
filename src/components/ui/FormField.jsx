@@ -14,7 +14,7 @@ export default function FormField({
       {label && (
         <label
           htmlFor={id}
-          className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300"
+          className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
         >
           <span className="flex items-center gap-1">
             <span>{label}</span>

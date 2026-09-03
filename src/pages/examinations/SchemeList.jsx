@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
-import { Layers, Award, CheckCircle2, Sliders, ShieldCheck, Plus, Edit2, X, Trash2, Settings } from 'lucide-react';
+import { Layers, Award, CheckCircle2, Sliders, ShieldCheck, Plus, Edit2, X, Trash2, Settings, Table, LayoutGrid } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SchemeList() {
@@ -8,6 +8,7 @@ export default function SchemeList() {
   const [gradeRules, setGradeRules] = useState([]);
   const [passingRules, setPassingRules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [schemeViewMode, setSchemeViewMode] = useState('table');
 
   // Modals state
   const [showSchemeModal, setShowSchemeModal] = useState(false);
@@ -245,61 +246,207 @@ export default function SchemeList() {
 
       {/* Examination Schemes Section */}
       <div className="space-y-4">
-        <h2 className="text-xs font-extrabold uppercase text-slate-600 dark:text-slate-400 tracking-wider flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span>Active Examination Schemes</span>
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-extrabold uppercase text-slate-600 dark:text-slate-400 tracking-wider flex items-center gap-2">
+            <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>Active Examination Schemes</span>
+          </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {schemes.map(sch => (
-            <div key={sch._id} className="app-card p-6 space-y-4 relative overflow-hidden group">
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-[10px] font-mono font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                    {sch.schemeCode} • v{sch.version}
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">{sch.schemeName}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{sch.description}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2.5 py-1 rounded-xl">
-                    {sch.totalMaxMarks} Marks
-                  </span>
-                  <button
-                    onClick={() => handleOpenEditScheme(sch)}
-                    className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition cursor-pointer"
-                    title="Configure Scheme"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Components table */}
-              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <span className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
-                  Assessment Components:
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {sch.components?.map((comp, idx) => (
-                    <div key={idx} className="app-card-subtle p-2.5 text-xs">
-                      <span className="font-bold text-slate-900 dark:text-white block">{comp.name} ({comp.code})</span>
-                      <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-                        <span>Max: <strong className="text-blue-600 dark:text-blue-400">{comp.defaultMaxMarks}</strong></span>
-                        <span>Pass: <strong className="text-emerald-600 dark:text-emerald-400">{comp.passingMarks}</strong></span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 font-medium">
-                <span>Classes: <strong className="text-slate-900 dark:text-white">{sch.applicableClasses?.join(', ')}</strong></span>
-                <span className="app-badge-blue">{sch.calculationMethod}</span>
-              </div>
-            </div>
-          ))}
+          {/* View Toggle */}
+          <div className="flex items-center p-1 bg-slate-100 dark:bg-[#151d30] rounded-xl border border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setSchemeViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                schemeViewMode === 'table'
+                  ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+              title="Table View"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSchemeViewMode('grid')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                schemeViewMode === 'grid'
+                  ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+              title="Cards Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Cards</span>
+            </button>
+          </div>
         </div>
+
+        {/* Schemes Table View */}
+        {schemeViewMode === 'table' && (
+          <div className="bg-white dark:bg-[#111726] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/90 dark:bg-[#131b2e]/80 border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3.5 px-4 w-40">Scheme Code</th>
+                    <th className="py-3.5 px-4 min-w-[220px]">Scheme Title & Description</th>
+                    <th className="py-3.5 px-4 w-28">Classes</th>
+                    <th className="py-3.5 px-4 w-28 text-center">Total Marks</th>
+                    <th className="py-3.5 px-4 min-w-[260px]">Assessment Components</th>
+                    <th className="py-3.5 px-4 w-32">Calculation Method</th>
+                    <th className="py-3.5 px-4 w-24 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
+                  {schemes.map(sch => (
+                    <tr
+                      key={sch._id}
+                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors duration-150"
+                    >
+                      {/* Code */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="space-y-0.5">
+                          <span className="font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-500/20">
+                            {sch.schemeCode}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block font-mono">v{sch.version}</span>
+                        </div>
+                      </td>
+
+                      {/* Title */}
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-slate-900 dark:text-white text-[13px] block">
+                          {sch.schemeName}
+                        </span>
+                        {sch.description && (
+                          <span className="text-[11px] text-slate-400 block mt-0.5 font-normal">
+                            {sch.description}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Classes */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-1">
+                          {sch.applicableClasses?.map(c => (
+                            <span
+                              key={c}
+                              className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold border border-slate-200/60 dark:border-slate-700/60"
+                            >
+                              Class {c}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* Marks */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 px-2.5 py-1 rounded-xl">
+                          {sch.totalMaxMarks} Marks
+                        </span>
+                      </td>
+
+                      {/* Components */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          {sch.components?.map((comp, idx) => (
+                            <div
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50"
+                            >
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">{comp.name}</span>
+                              <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                                {comp.defaultMaxMarks}M
+                              </span>
+                              <span className="text-[9px] text-slate-400">
+                                (P:{comp.passingMarks})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* Calculation */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="app-badge-blue font-bold">
+                          {sch.calculationMethod}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditScheme(sch)}
+                          className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors cursor-pointer"
+                          title="Configure Scheme"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Schemes Cards View */}
+        {schemeViewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {schemes.map(sch => (
+              <div key={sch._id} className="app-card p-6 space-y-4 relative overflow-hidden group">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-mono font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                      {sch.schemeCode} • v{sch.version}
+                    </span>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">{sch.schemeName}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{sch.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2.5 py-1 rounded-xl">
+                      {sch.totalMaxMarks} Marks
+                    </span>
+                    <button
+                      onClick={() => handleOpenEditScheme(sch)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition cursor-pointer"
+                      title="Configure Scheme"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Components table */}
+                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <span className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400">
+                    Assessment Components:
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {sch.components?.map((comp, idx) => (
+                      <div key={idx} className="app-card-subtle p-2.5 text-xs">
+                        <span className="font-bold text-slate-900 dark:text-white block">{comp.name} ({comp.code})</span>
+                        <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+                          <span>Max: <strong className="text-blue-600 dark:text-blue-400">{comp.defaultMaxMarks}</strong></span>
+                          <span>Pass: <strong className="text-emerald-600 dark:text-emerald-400">{comp.passingMarks}</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 font-medium">
+                  <span>Classes: <strong className="text-slate-900 dark:text-white">{sch.applicableClasses?.join(', ')}</strong></span>
+                  <span className="app-badge-blue">{sch.calculationMethod}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Grade Rules & Passing Rules Grid */}

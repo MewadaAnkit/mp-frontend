@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import api from '../../api/client';
 import { useAcademic } from '../../context/AcademicContext';
-import { Calendar, Plus, CheckCircle2, Lock, Sparkles, X, Clock } from 'lucide-react';
+import { Calendar, Plus, CheckCircle2, Lock, Sparkles, X, Clock, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AcademicSessions() {
   const { sessions, reloadMetadata } = useAcademic();
   const [showModal, setShowModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     sessionName: '',
     startDate: '',
@@ -15,8 +18,18 @@ export default function AcademicSessions() {
     description: ''
   });
 
+  const filteredSessions = useMemo(() => {
+    if (!searchTerm.trim()) return sessions || [];
+    const term = searchTerm.toLowerCase();
+    return (sessions || []).filter(s => 
+      s.sessionName?.toLowerCase().includes(term) ||
+      s.description?.toLowerCase().includes(term)
+    );
+  }, [sessions, searchTerm]);
+
   const handleCreate = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const res = await api.post('/academic/sessions', formData);
       if (res.data.success) {
@@ -27,10 +40,13 @@ export default function AcademicSessions() {
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create session');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleSetCurrent = async (id, sessionName) => {
+    setActionLoadingId(id);
     try {
       const res = await api.put(`/academic/sessions/${id}/set-current`);
       if (res.data.success) {
@@ -39,6 +55,8 @@ export default function AcademicSessions() {
       }
     } catch (err) {
       toast.error('Failed to update active session');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -63,73 +81,169 @@ export default function AcademicSessions() {
         </button>
       </div>
 
-      {/* Sessions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {sessions.map((sess) => (
-          <div
-            key={sess._id}
-            className={`app-card p-5 space-y-4 relative flex flex-col justify-between hover:shadow-md transition-shadow ${
-              sess.isCurrent ? 'border-blue-500/50 dark:border-blue-500/40 ring-1 ring-blue-500/20' : ''
-            }`}
-          >
-            <div className="space-y-3">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-                    sess.isCurrent
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}>
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{sess.sessionName}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{sess.description || 'Academic Year'}</p>
-                  </div>
-                </div>
-
-                {sess.isCurrent && (
-                  <span className="app-badge-blue font-bold">
-                    <Sparkles className="w-3 h-3" />
-                    ACTIVE
-                  </span>
-                )}
-              </div>
-
-              {/* Date Details */}
-              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Duration:</span>
-                  </span>
-                  <span className="font-bold text-slate-900 dark:text-white font-mono">
-                    {new Date(sess.startDate).toLocaleDateString('en-GB')} – {new Date(sess.endDate).toLocaleDateString('en-GB')}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              {!sess.isCurrent ? (
-                <button
-                  onClick={() => handleSetCurrent(sess._id, sess.sessionName)}
-                  className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Set as Active Session</span>
-                </button>
-              ) : (
-                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Currently Active Session</span>
-                </span>
-              )}
-            </div>
+      {/* Sessions Table Card */}
+      <div className="bg-white dark:bg-[#111726] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-hidden">
+        {/* Table Toolbar */}
+        <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/40">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search sessions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-white"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')} 
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-        ))}
+
+          <div className="flex items-center gap-2 self-end sm:self-auto text-xs text-slate-500 dark:text-slate-400">
+            <span>Total: <strong className="text-slate-900 dark:text-white font-bold">{sessions.length}</strong></span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              Active: 
+              <strong className="text-blue-600 dark:text-blue-400 font-bold font-mono">
+                {sessions.find(s => s.isCurrent)?.sessionName || 'None'}
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-[#131b2e]/80 border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-3.5 px-4 w-12 text-center">#</th>
+                <th className="py-3.5 px-4 min-w-[160px]">Session Name</th>
+                <th className="py-3.5 px-4 min-w-[200px]">Description</th>
+                <th className="py-3.5 px-4 min-w-[140px]">Start Date</th>
+                <th className="py-3.5 px-4 min-w-[140px]">End Date</th>
+                <th className="py-3.5 px-4 w-28 text-center">Status</th>
+                <th className="py-3.5 px-4 w-44 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
+              {filteredSessions.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 dark:text-slate-500">
+                    <Calendar className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">No academic sessions found</p>
+                    {searchTerm && <p className="text-[11px] mt-1">Try clearing your search query</p>}
+                  </td>
+                </tr>
+              ) : (
+                filteredSessions.map((sess, idx) => (
+                  <tr
+                    key={sess._id}
+                    className={`transition-colors duration-150 ${
+                      sess.isCurrent
+                        ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/60 dark:hover:bg-blue-950/30'
+                        : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
+                    }`}
+                  >
+                    {/* Index */}
+                    <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px]">
+                      {idx + 1}
+                    </td>
+
+                    {/* Session Name */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+                          sess.isCurrent
+                            ? 'bg-blue-600 text-white shadow-xs shadow-blue-500/30'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        }`}>
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="font-mono text-[13px] font-bold text-slate-900 dark:text-white block">
+                            {sess.sessionName}
+                          </span>
+                          {sess.isCurrent && (
+                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                              Current System Active
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Description */}
+                    <td className="py-3.5 px-4">
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">
+                        {sess.description || 'Academic Year'}
+                      </span>
+                    </td>
+
+                    {/* Start Date */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                          {sess.startDate ? new Date(sess.startDate).toLocaleDateString('en-GB') : '-'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* End Date */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                          {sess.endDate ? new Date(sess.endDate).toLocaleDateString('en-GB') : '-'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Status Badge */}
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      {sess.isCurrent ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <Sparkles className="w-3 h-3" />
+                          ACTIVE
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700/60">
+                          ARCHIVED
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      {sess.isCurrent ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-500/20">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Active Session</span>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetCurrent(sess._id, sess.sessionName)}
+                          disabled={actionLoadingId === sess._id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg text-blue-600 dark:text-blue-400 hover:text-white hover:bg-blue-600 dark:hover:bg-blue-600 border border-blue-200 dark:border-blue-500/30 hover:border-transparent transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{actionLoadingId === sess._id ? 'Activating...' : 'Set as Active'}</span>
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Create Modal */}
@@ -216,9 +330,10 @@ export default function AcademicSessions() {
                 </button>
                 <button
                   type="submit"
-                  className="app-btn-primary"
+                  disabled={submitting}
+                  className="app-btn-primary disabled:opacity-50"
                 >
-                  Create Session
+                  {submitting ? 'Creating...' : 'Create Session'}
                 </button>
               </div>
             </form>

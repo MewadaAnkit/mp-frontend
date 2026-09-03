@@ -21,7 +21,9 @@ import {
   AlertCircle,
   HelpCircle,
   BookOpen,
-  Filter
+  Filter,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 import api from '../../api/client';
 import { useAcademic } from '../../context/AcademicContext';
@@ -59,6 +61,23 @@ export default function ExamScheduleManager() {
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [singleEditModalOpen, setSingleEditModalOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
+
+  // Auto-Generate Exam Datesheet state
+  const [autoExamModalOpen, setAutoExamModalOpen] = useState(false);
+  const [generatingExam, setGeneratingExam] = useState(false);
+  const [autoExamForm, setAutoExamForm] = useState({
+    examinationId: '',
+    className: '',
+    sectionName: 'ALL',
+    startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    startTime: '09:00 AM',
+    endTime: '12:00 PM',
+    gapDays: 1,
+    skipSundays: true,
+    skipSaturdays: false,
+    roomOrHall: 'Main Examination Hall A',
+    examType: 'THEORY'
+  });
 
   // Bulk Builder state
   const [bulkExamId, setBulkExamId] = useState('');
@@ -281,6 +300,64 @@ export default function ExamScheduleManager() {
     setBulkEntries(bulkEntries.filter((_, idx) => idx !== index));
   };
 
+  // Auto-Generate Exam Datesheet Handler
+  const handleAutoGenerateExamSchedule = async (e) => {
+    if (e) e.preventDefault();
+    const examId = autoExamForm.examinationId || bulkExamId || selectedExamId || examinations[0]?._id;
+    const cls = autoExamForm.className || bulkClass || selectedClass || classes[0]?.className;
+
+    if (!examId) {
+      toast.error('Please select an examination');
+      return;
+    }
+    if (!cls) {
+      toast.error('Please select a class');
+      return;
+    }
+
+    try {
+      setGeneratingExam(true);
+      const payload = {
+        examinationId: examId,
+        academicSession: currentSession?.sessionName || '2025-26',
+        className: cls,
+        sectionName: autoExamForm.sectionName || 'ALL',
+        startDate: autoExamForm.startDate,
+        startTime: autoExamForm.startTime,
+        endTime: autoExamForm.endTime,
+        gapDays: Number(autoExamForm.gapDays),
+        skipSundays: autoExamForm.skipSundays,
+        skipSaturdays: autoExamForm.skipSaturdays,
+        roomOrHall: autoExamForm.roomOrHall,
+        examType: autoExamForm.examType,
+        saveImmediately: false
+      };
+
+      const res = await api.post('/exam-schedules/auto-generate', payload);
+      if (res.data.success && res.data.data?.length > 0) {
+        setBulkExamId(examId);
+        setBulkClass(cls);
+        setBulkApplyAllSections(autoExamForm.sectionName === 'ALL');
+        setBulkEntries(res.data.data);
+        setDetectedConflicts(res.data.conflicts || []);
+        setActiveTab('bulk_builder');
+        setAutoExamModalOpen(false);
+
+        toast.success(
+          isHindi
+            ? `⚡ ${res.data.data.length} विषयों की समय-सारणी तैयार! कृपया नीचे समीक्षा कर सुरक्षित करें।`
+            : `⚡ Auto-generated ${res.data.data.length} exam slots! Review in builder below and save.`
+        );
+      } else {
+        toast.error('No exam schedule entries were generated');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to auto-generate exam datesheet');
+    } finally {
+      setGeneratingExam(false);
+    }
+  };
+
   // Run Realtime Smart Conflict Check
   const handleCheckConflicts = async () => {
     try {
@@ -431,6 +508,22 @@ export default function ExamScheduleManager() {
           >
             <Printer className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>{t('examSchedule.printTimetableBtn', 'Print Timetable (A4)')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAutoExamForm((prev) => ({
+                ...prev,
+                examinationId: selectedExamId || examinations[0]?._id || '',
+                className: selectedClass || classes[0]?.className || '9'
+              }));
+              setAutoExamModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-md shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer"
+          >
+            <Zap className="w-4 h-4 fill-white" />
+            <span>{isHindi ? '⚡ स्वतः परीक्षा समय-सारणी' : '⚡ Auto-Generate Datesheet'}</span>
           </button>
 
           <button
@@ -742,6 +835,21 @@ export default function ExamScheduleManager() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAutoExamForm((prev) => ({
+                      ...prev,
+                      examinationId: bulkExamId || selectedExamId || examinations[0]?._id || '',
+                      className: bulkClass || selectedClass || classes[0]?.className || '9'
+                    }));
+                    setAutoExamModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs hover:from-purple-700 hover:to-indigo-700 transition cursor-pointer"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-white" />
+                  <span>{isHindi ? 'स्वतः तिथियां भरें' : 'Auto-Generate Schedule'}</span>
+                </button>
                 <button
                   onClick={handleCheckConflicts}
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 transition cursor-pointer"
@@ -1466,6 +1574,215 @@ export default function ExamScheduleManager() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* AUTO-GENERATE EXAM DATESHEET MODAL */}
+      <Modal
+        isOpen={autoExamModalOpen}
+        onClose={() => {
+          if (!generatingExam) setAutoExamModalOpen(false);
+        }}
+        title={isHindi ? '⚡ स्वतः परीक्षा समय-सारणी जनरेटर' : '⚡ Auto-Generate Exam Datesheet'}
+        subtitle={isHindi ? 'परीक्षा प्रारंभ तिथि व अध्ययन अवकाश (Gap Days) चुनकर स्वचालित समय-सारणी तैयार करें' : 'Automatically schedule all class subjects with custom study gaps and weekend handling'}
+        maxWidth="max-w-2xl"
+      >
+        <form onSubmit={handleAutoGenerateExamSchedule} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {isHindi ? 'परीक्षा (Examination)' : 'Examination'} *
+              </label>
+              <select
+                required
+                value={autoExamForm.examinationId || selectedExamId}
+                onChange={(e) => setAutoExamForm({ ...autoExamForm, examinationId: e.target.value })}
+                className="app-select w-full text-xs font-bold"
+              >
+                {examinations.map((ex) => (
+                  <option key={ex._id} value={ex._id}>
+                    {ex.examName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {isHindi ? 'कक्षा (Target Class)' : 'Target Class'} *
+              </label>
+              <select
+                required
+                value={autoExamForm.className || selectedClass}
+                onChange={(e) => setAutoExamForm({ ...autoExamForm, className: e.target.value })}
+                className="app-select w-full text-xs font-bold"
+              >
+                {classes && classes.length > 0 ? (
+                  classes.map((c) => (
+                    <option key={c._id || c.className} value={c.className}>
+                      Class {c.className}
+                    </option>
+                  ))
+                ) : (
+                  ['9', '10', '11', '12'].map((c) => (
+                    <option key={c} value={c}>Class {c}</option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {isHindi ? 'प्रथम परीक्षा तिथि (Start Date)' : 'Exam Start Date'} *
+              </label>
+              <input
+                type="date"
+                required
+                value={autoExamForm.startDate}
+                onChange={(e) => setAutoExamForm({ ...autoExamForm, startDate: e.target.value })}
+                className="app-input w-full text-xs font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {isHindi ? 'अध्ययन अवकाश / अंतराल (Gap Days)' : 'Study Leave / Gap Days Between Exams'} *
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="7"
+                  required
+                  value={autoExamForm.gapDays}
+                  onChange={(e) => setAutoExamForm({ ...autoExamForm, gapDays: e.target.value })}
+                  className="app-input w-24 text-xs font-bold"
+                />
+                <div className="flex items-center gap-1">
+                  {[0, 1, 2].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setAutoExamForm({ ...autoExamForm, gapDays: g })}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                        Number(autoExamForm.gapDays) === g
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {g === 0 ? 'No Gap' : `${g} Day${g > 1 ? 's' : ''}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {isHindi ? 'परीक्षा प्रारंभ समय' : 'Shift Start Time'} *
+              </label>
+              <input
+                type="text"
+                required
+                value={autoExamForm.startTime}
+                onChange={(e) => setAutoExamForm({ ...autoExamForm, startTime: e.target.value })}
+                placeholder="09:00 AM"
+                className="app-input w-full text-xs font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {isHindi ? 'परीक्षा समाप्ति समय' : 'Shift End Time'} *
+              </label>
+              <input
+                type="text"
+                required
+                value={autoExamForm.endTime}
+                onChange={(e) => setAutoExamForm({ ...autoExamForm, endTime: e.target.value })}
+                placeholder="12:00 PM"
+                className="app-input w-full text-xs font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {isHindi ? 'परीक्षा भवन / कक्ष (Exam Room/Hall)' : 'Default Examination Hall / Room'}
+              </label>
+              <input
+                type="text"
+                value={autoExamForm.roomOrHall}
+                onChange={(e) => setAutoExamForm({ ...autoExamForm, roomOrHall: e.target.value })}
+                placeholder="e.g. Main Examination Hall A"
+                className="app-input w-full text-xs"
+              />
+            </div>
+
+            <div className="flex flex-col justify-end space-y-2 pt-2">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoExamForm.skipSundays}
+                  onChange={(e) => setAutoExamForm({ ...autoExamForm, skipSundays: e.target.checked })}
+                  className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                />
+                <span>{isHindi ? 'रविवार को स्वतः छोड़ें (Skip Sundays)' : 'Automatically skip Sundays'}</span>
+              </label>
+
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoExamForm.skipSaturdays}
+                  onChange={(e) => setAutoExamForm({ ...autoExamForm, skipSaturdays: e.target.checked })}
+                  className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4"
+                />
+                <span>{isHindi ? 'शनिवार को भी छोड़ें (Skip Saturdays)' : 'Also skip Saturdays'}</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-xs">
+            <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+            <p>
+              {isHindi
+                ? 'जनरेटर इस कक्षा के सभी पंजीकृत विषयों को तिथि व अध्ययन अवकाश अनुसार क्रमबद्ध करेगा और समय-सारणी प्रारूप में लोड कर देगा।'
+                : 'The generator will fetch all registered subjects for this class, distribute them sequentially with study leaves, and load them directly into the review builder.'}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setAutoExamModalOpen(false)}
+              className="app-btn-secondary text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={generatingExam}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md shadow-purple-500/20 transition cursor-pointer disabled:opacity-50"
+            >
+              {generatingExam ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Generating Datesheet...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 fill-white" />
+                  <span>Generate Exam Datesheet</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

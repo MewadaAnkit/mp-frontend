@@ -12,7 +12,13 @@ import {
   Sparkles,
   Table,
   LayoutGrid,
-  Edit
+  Edit,
+  Zap,
+  Check,
+  RotateCcw,
+  Settings2,
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react';
 import api from '../../api/client';
 import { useAcademic } from '../../context/AcademicContext';
@@ -49,6 +55,26 @@ export default function TimetableSchedule() {
     roomNo: 'Room 101',
     isBreak: false,
     isCustomSubject: false
+  });
+
+  // Auto-Generator State
+  const [autoModalOpen, setAutoModalOpen] = useState(false);
+  const [autoStep, setAutoStep] = useState('FORM'); // 'FORM' | 'PREVIEW'
+  const [generating, setGenerating] = useState(false);
+  const [savingAuto, setSavingAuto] = useState(false);
+  const [autoPreviewWeek, setAutoPreviewWeek] = useState([]);
+  const [previewDay, setPreviewDay] = useState('MONDAY');
+  const [autoForm, setAutoForm] = useState({
+    targetClass: '9',
+    targetSection: 'A',
+    applyAllSections: false,
+    schoolStartTime: '08:00',
+    schoolEndTime: '14:00',
+    periodDuration: 45,
+    recessStartTime: '11:00',
+    recessDuration: 30,
+    assemblyDuration: 0,
+    days: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
   });
 
   // Load teachers for faculty dropdown
@@ -183,6 +209,75 @@ export default function TimetableSchedule() {
     setModalOpen(true);
   };
 
+  // Auto-Generator Handlers
+  const handleAutoGeneratePreview = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setGenerating(true);
+      const payload = {
+        academicSession: currentSession?.sessionName || '2025-26',
+        className: autoForm.targetClass,
+        sectionName: autoForm.targetSection,
+        schoolStartTime: autoForm.schoolStartTime,
+        schoolEndTime: autoForm.schoolEndTime,
+        periodDuration: Number(autoForm.periodDuration),
+        recessStartTime: autoForm.recessStartTime,
+        recessDuration: Number(autoForm.recessDuration),
+        assemblyDuration: Number(autoForm.assemblyDuration),
+        days: autoForm.days,
+        saveImmediately: false
+      };
+
+      const res = await api.post('/timetable/auto-generate', payload);
+      if (res.data.success && res.data.data?.length > 0) {
+        setAutoPreviewWeek(res.data.data);
+        setPreviewDay(res.data.data[0].dayOfWeek);
+        setAutoStep('PREVIEW');
+        toast.success(isHindi ? 'समय-सारणी प्रारूप तैयार हुआ! कृपया समीक्षा करें।' : 'Weekly timetable preview generated!');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to auto-generate timetable');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleConfirmSaveAutoTimetable = async () => {
+    try {
+      setSavingAuto(true);
+      const targetSections = autoForm.applyAllSections
+        ? (classes?.find(c => c.className === autoForm.targetClass)?.sections || ['A', 'B', 'C'])
+        : [autoForm.targetSection];
+
+      for (const sec of targetSections) {
+        const payload = {
+          academicSession: currentSession?.sessionName || '2025-26',
+          className: autoForm.targetClass,
+          sectionName: sec,
+          schoolStartTime: autoForm.schoolStartTime,
+          schoolEndTime: autoForm.schoolEndTime,
+          periodDuration: Number(autoForm.periodDuration),
+          recessStartTime: autoForm.recessStartTime,
+          recessDuration: Number(autoForm.recessDuration),
+          assemblyDuration: Number(autoForm.assemblyDuration),
+          days: autoForm.days,
+          saveImmediately: true
+        };
+        await api.post('/timetable/auto-generate', payload);
+      }
+
+      toast.success(isHindi ? 'समय-सारणी सफलतापूर्वक लागू और सुरक्षित कर दी गई!' : 'Weekly timetable applied & saved successfully!');
+      setAutoModalOpen(false);
+      setSelectedClass(autoForm.targetClass);
+      setSelectedSection(autoForm.targetSection);
+      fetchTimetable();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save generated timetable');
+    } finally {
+      setSavingAuto(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -233,6 +328,24 @@ export default function TimetableSchedule() {
           >
             <Printer className="w-4 h-4" />
             <span>{t('timetable.printBtn', 'Print Timetable')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAutoForm((prev) => ({
+                ...prev,
+                targetClass: selectedClass,
+                targetSection: selectedSection
+              }));
+              setAutoStep('FORM');
+              setAutoPreviewWeek([]);
+              setAutoModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 shadow-md shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer"
+          >
+            <Zap className="w-4 h-4 fill-white" />
+            <span>{isHindi ? 'स्वतः समय-सारणी बनाएं' : 'Auto-Generate Timetable'}</span>
           </button>
 
           <button
@@ -787,6 +900,450 @@ export default function TimetableSchedule() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Auto-Generate Timetable Modal */}
+      <Modal
+        isOpen={autoModalOpen}
+        onClose={() => {
+          if (!generating && !savingAuto) setAutoModalOpen(false);
+        }}
+        title={
+          autoStep === 'FORM'
+            ? (isHindi ? '⚡ स्वतः समय-सारणी जनरेटर' : '⚡ Smart Class Timetable Generator')
+            : (isHindi ? '📋 साप्ताहिक समय-सारणी पूर्वावलोकन' : '📋 Weekly Timetable Preview')
+        }
+        subtitle={
+          autoStep === 'FORM'
+            ? (isHindi ? 'कक्षा के खुलने, समाप्त होने एवं मध्यांतर का समय दर्ज करें' : 'Provide school opening, closing, and recess hours to auto-fill the entire week')
+            : (isHindi ? 'आवंटित शिक्षकों व विषयों की जांच कर कक्षा में लागू करें' : 'Verify auto-balanced subject slots and faculty assignments before publishing')
+        }
+        maxWidth={autoStep === 'FORM' ? 'max-w-2xl' : 'max-w-4xl'}
+      >
+        {autoStep === 'FORM' ? (
+          <form onSubmit={handleAutoGeneratePreview} className="space-y-5">
+            {/* Target Class & Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('timetable.class', 'Target Class')} *
+                </label>
+                <select
+                  value={autoForm.targetClass}
+                  onChange={(e) => setAutoForm({ ...autoForm, targetClass: e.target.value })}
+                  className="app-select w-full text-xs font-bold"
+                >
+                  {classes && classes.length > 0 ? (
+                    classes.map((c) => (
+                      <option key={c._id || c.className} value={c.className}>
+                        Class {c.className}
+                      </option>
+                    ))
+                  ) : (
+                    ['9', '10', '11', '12'].map((c) => (
+                      <option key={c} value={c}>Class {c}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('timetable.section', 'Section')} *
+                </label>
+                <select
+                  disabled={autoForm.applyAllSections}
+                  value={autoForm.targetSection}
+                  onChange={(e) => setAutoForm({ ...autoForm, targetSection: e.target.value })}
+                  className="app-select w-full text-xs font-bold disabled:opacity-50"
+                >
+                  {['A', 'B', 'C', 'D'].map((s) => (
+                    <option key={s} value={s}>Section {s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoForm.applyAllSections}
+                    onChange={(e) => setAutoForm({ ...autoForm, applyAllSections: e.target.checked })}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  />
+                  <span>{isHindi ? 'इस कक्षा के सभी वर्गों (Sections) पर एक साथ लागू करें' : 'Generate & apply for all sections of this class'}</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Timings Grid */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                {isHindi ? 'विद्यालय समय चक्र (School Shift & Timing)' : 'School Hours & Shift Timings'}
+              </h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {isHindi ? 'विद्यालय प्रारंभ समय' : 'School Opening Time'} *
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={autoForm.schoolStartTime}
+                    onChange={(e) => setAutoForm({ ...autoForm, schoolStartTime: e.target.value })}
+                    className="app-input w-full text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {isHindi ? 'विद्यालय समाप्ति समय' : 'School Closing Time'} *
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={autoForm.schoolEndTime}
+                    onChange={(e) => setAutoForm({ ...autoForm, schoolEndTime: e.target.value })}
+                    className="app-input w-full text-xs font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Period Duration & Presets */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {isHindi ? 'प्रति पीरियड अवधि (मिनट)' : 'Period Duration (Minutes)'} *
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {[40, 45, 50].map((dur) => (
+                        <button
+                          key={dur}
+                          type="button"
+                          onClick={() => setAutoForm({ ...autoForm, periodDuration: dur })}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                            Number(autoForm.periodDuration) === dur
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                          }`}
+                        >
+                          {dur}m
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <input
+                    type="number"
+                    min="25"
+                    max="90"
+                    required
+                    value={autoForm.periodDuration}
+                    onChange={(e) => setAutoForm({ ...autoForm, periodDuration: e.target.value })}
+                    className="app-input w-full text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {isHindi ? 'प्रातःकालीन सभा / जीरो पीरियड (मिनट)' : 'Morning Assembly / Zero Period (Mins)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="45"
+                    value={autoForm.assemblyDuration}
+                    onChange={(e) => setAutoForm({ ...autoForm, assemblyDuration: e.target.value })}
+                    className="app-input w-full text-xs"
+                    placeholder="0 if none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Recess / Break Section */}
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+              <div className="flex items-center gap-2">
+                <Coffee className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <h4 className="text-xs font-extrabold text-amber-900 dark:text-amber-300">
+                  {isHindi ? 'मध्यांतर / लंच ब्रेक (Recess Break Settings)' : 'Recess / Lunch Break Settings'}
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {isHindi ? 'मध्यांतर शुरू होने का समय' : 'Recess Start Time'}
+                  </label>
+                  <input
+                    type="time"
+                    value={autoForm.recessStartTime}
+                    onChange={(e) => setAutoForm({ ...autoForm, recessStartTime: e.target.value })}
+                    className="app-input w-full text-xs font-bold bg-white dark:bg-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {isHindi ? 'मध्यांतर अवधि (मिनट)' : 'Recess Duration (Minutes)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="15"
+                    max="60"
+                    value={autoForm.recessDuration}
+                    onChange={(e) => setAutoForm({ ...autoForm, recessDuration: e.target.value })}
+                    className="app-input w-full text-xs font-bold bg-white dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Days Selection */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                {isHindi ? 'कार्य दिवस (Working Days)' : 'Operating Days of Week'}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'].map((day) => {
+                  const active = autoForm.days.includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        if (active && autoForm.days.length === 1) return;
+                        const nextDays = active
+                          ? autoForm.days.filter((d) => d !== day)
+                          : [...autoForm.days, day];
+                        setAutoForm({ ...autoForm, days: nextDays });
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        active
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {active && <Check className="w-3 h-3" />}
+                      <span>{day.slice(0, 3)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Intelligence Notice */}
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs">
+              <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+              <p>
+                {isHindi
+                  ? 'जनरेटर स्वचालित रूप से डेटाबेस से विषय और आवंटित शिक्षकों को लोड करेगा और मुख्य विषयों को पूरे सप्ताह समान रूप से वितरित करेगा।'
+                  : 'The generator will automatically map subjects, fetch designated faculty from Teacher Allocation, and balance core and co-curricular subjects across the week.'}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setAutoModalOpen(false)}
+                className="app-btn-secondary text-xs"
+              >
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={generating}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition cursor-pointer disabled:opacity-50"
+              >
+                {generating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>{isHindi ? 'समय-सारणी बन रही है...' : 'Generating Slots...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    <span>{isHindi ? 'पूर्वावलोकन देखें' : 'Generate & Preview'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* PREVIEW STEP */
+          <div className="space-y-4">
+            {/* Header / Summary Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+              <div>
+                <span className="text-xs font-bold text-slate-500">
+                  Target:{' '}
+                  <strong className="text-slate-900 dark:text-white">
+                    Class {autoForm.targetClass}-{autoForm.applyAllSections ? 'ALL' : autoForm.targetSection}
+                  </strong>
+                </span>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {autoForm.schoolStartTime} - {autoForm.schoolEndTime} • {autoForm.periodDuration}m periods • Recess at {autoForm.recessStartTime}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAutoStep('FORM')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition"
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                  <span>Adjust Settings</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Day Selector Tabs in Preview */}
+            <div className="flex flex-wrap gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2">
+              {autoPreviewWeek.map((dayData) => {
+                const isActive = previewDay === dayData.dayOfWeek;
+                return (
+                  <button
+                    key={dayData.dayOfWeek}
+                    type="button"
+                    onClick={() => setPreviewDay(dayData.dayOfWeek)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {dayData.dayOfWeek} ({dayData.periods?.length || 0})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Periods Preview Table */}
+            {(() => {
+              const activeDayData = autoPreviewWeek.find((d) => d.dayOfWeek === previewDay) || autoPreviewWeek[0];
+              const periods = activeDayData?.periods || [];
+
+              return (
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-[#151d30] text-slate-600 dark:text-slate-400 font-extrabold border-b border-slate-200 dark:border-slate-800">
+                        <th className="py-2.5 px-3 w-16">Slot</th>
+                        <th className="py-2.5 px-3 w-32">Time</th>
+                        <th className="py-2.5 px-3">Subject</th>
+                        <th className="py-2.5 px-3">Teacher Allocated</th>
+                        <th className="py-2.5 px-3 w-28">Room</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {periods.map((p, idx) => {
+                        if (p.isBreak) {
+                          return (
+                            <tr key={idx} className="bg-amber-500/10 dark:bg-amber-500/15">
+                              <td className="py-2.5 px-3 font-bold text-amber-700 dark:text-amber-400">
+                                <Coffee className="w-4 h-4 inline mr-1" />
+                              </td>
+                              <td className="py-2.5 px-3 font-bold text-amber-800 dark:text-amber-300">
+                                {p.startTime} - {p.endTime}
+                              </td>
+                              <td colSpan={3} className="py-2.5 px-3 font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+                                {p.subjectName} ({autoForm.recessDuration} mins)
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                            <td className="py-2.5 px-3 font-black text-slate-400">
+                              #{p.periodNumber}
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-700 dark:text-slate-300">
+                              {p.startTime} - {p.endTime}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-extrabold text-slate-900 dark:text-white">
+                                  {p.subjectName}
+                                </span>
+                                {p.subjectCode && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                    {p.subjectCode}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2 px-3">
+                              <select
+                                value={p.teacherName || ''}
+                                onChange={(e) => {
+                                  const newName = e.target.value;
+                                  setAutoPreviewWeek((prev) =>
+                                    prev.map((dayObj) => {
+                                      if (dayObj.dayOfWeek !== previewDay) return dayObj;
+                                      const updatedPeriods = [...dayObj.periods];
+                                      updatedPeriods[idx] = { ...updatedPeriods[idx], teacherName: newName };
+                                      return { ...dayObj, periods: updatedPeriods };
+                                    })
+                                  );
+                                }}
+                                className="app-select py-1 px-2 text-xs font-semibold w-full max-w-[210px] bg-white dark:bg-slate-900"
+                              >
+                                <option value="">-- Unassigned --</option>
+                                {staffList.map((st) => (
+                                  <option key={st._id} value={st.fullName}>
+                                    {st.fullName} {st.cadre ? `(${st.cadre})` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-medium">
+                              {p.roomNo}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setAutoStep('FORM')}
+                className="app-btn-secondary text-xs"
+              >
+                ← Back to Parameters
+              </button>
+
+              <button
+                type="button"
+                disabled={savingAuto}
+                onClick={handleConfirmSaveAutoTimetable}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition cursor-pointer disabled:opacity-50"
+              >
+                {savingAuto ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Saving Schedule to Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Apply & Save Timetable to Class</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

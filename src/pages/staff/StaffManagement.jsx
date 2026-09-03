@@ -54,6 +54,9 @@ export default function StaffManagement() {
     email: '',
     gender: 'MALE',
     designation: '',
+    cadre: 'TGT',
+    teachingWings: ['SECONDARY'],
+    primarySubject: '',
     department: 'ACADEMIC',
     qualification: '',
     experienceYears: 0,
@@ -235,6 +238,9 @@ export default function StaffManagement() {
       email: staff.email || '',
       gender: staff.gender || 'MALE',
       designation: staff.designation,
+      cadre: staff.cadre || 'TGT',
+      teachingWings: staff.teachingWings || ['SECONDARY'],
+      primarySubject: staff.primarySubject || '',
       department: staff.department || 'ACADEMIC',
       qualification: staff.qualification || '',
       experienceYears: staff.experienceYears || 0,
@@ -388,9 +394,21 @@ export default function StaffManagement() {
                         </td>
                         <td className="py-4 px-6">
                           <p className="font-semibold text-slate-800 dark:text-slate-200">{st.designation}</p>
-                          <span className="inline-block mt-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wide">
-                            {st.department}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                            <span className="inline-block text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                              {st.department}
+                            </span>
+                            {st.cadre && (
+                              <span className="inline-block text-[10px] font-extrabold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/10 px-2 py-0.5 rounded-full uppercase tracking-wide border border-purple-200/60 dark:border-purple-500/20">
+                                {st.cadre}
+                              </span>
+                            )}
+                            {st.primarySubject && (
+                              <span className="inline-block text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-full">
+                                {st.primarySubject}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 px-6">
                           <p className="font-medium text-slate-800 dark:text-slate-200">{st.phone}</p>
@@ -577,7 +595,7 @@ export default function StaffManagement() {
               <select
                 value={staffForm.department}
                 onChange={(e) => setStaffForm({ ...staffForm, department: e.target.value })}
-                className="app-select w-full text-xs"
+                className="app-select w-full text-xs font-bold"
               >
                 <option value="ACADEMIC">Academic / Faculty</option>
                 <option value="ADMINISTRATION">Administration</option>
@@ -587,6 +605,42 @@ export default function StaffManagement() {
                 <option value="SUPPORT">Support</option>
               </select>
             </FormField>
+
+            {staffForm.department === 'ACADEMIC' && (
+              <>
+                <FormField label="Teaching Cadre / Wing">
+                  <select
+                    value={staffForm.cadre}
+                    onChange={(e) => {
+                      const c = e.target.value;
+                      let wings = ['SECONDARY'];
+                      if (c === 'PRT') wings = ['PRIMARY'];
+                      if (c === 'TGT') wings = ['MIDDLE', 'SECONDARY'];
+                      if (c === 'PGT') wings = ['SENIOR_SECONDARY'];
+                      if (c === 'SPECIALIST') wings = ['ALL'];
+                      setStaffForm({ ...staffForm, cadre: c, teachingWings: wings });
+                    }}
+                    className="app-select w-full text-xs font-bold"
+                  >
+                    <option value="PRT">PRT (Primary Teacher • Class 1 to 5)</option>
+                    <option value="TGT">TGT (Trained Graduate • Class 6 to 10)</option>
+                    <option value="PGT">PGT (Post Graduate / Lecturer • Class 11 & 12)</option>
+                    <option value="SPECIALIST">Specialist Faculty (Sports / Computer / Art - All)</option>
+                    <option value="OTHER">Other Faculty</option>
+                  </select>
+                </FormField>
+
+                <FormField label="Primary Teaching Subject">
+                  <input
+                    type="text"
+                    value={staffForm.primarySubject}
+                    onChange={(e) => setStaffForm({ ...staffForm, primarySubject: e.target.value })}
+                    placeholder="e.g. Mathematics, Hindi, Science, English"
+                    className="app-input w-full text-xs"
+                  />
+                </FormField>
+              </>
+            )}
 
             <FormField label="Qualification">
               <input

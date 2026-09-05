@@ -309,5 +309,90 @@ export default {
     statusPublished: 'PUBLISHED',
     statusCompleted: 'COMPLETED',
     conflictWarningTitle: 'समय-सारणी में टकराव मिला!'
+  },
+
+  // Students Directory
+  students: {
+    title: 'विद्यार्थी निर्देशिका एवं प्रबंधन',
+    subtitle: 'सत्र इतिहास ट्रैकिंग और 360° शैक्षणिक प्रगति के साथ संपूर्ण विद्यार्थी सूची',
+    totalStudents: 'कुल विद्यार्थी',
+    bulkImport: 'थोक आयात (Bulk Import)',
+    addStudent: 'नया विद्यार्थी जोड़ें',
+    searchPlaceholder: 'नाम, प्रवेश क्रमांक, समग्र आईडी, रोल नंबर से खोजें...',
+    allClasses: 'सभी कक्षाएं',
+    allSections: 'सभी वर्ग (Sections)',
+    colRollAdm: 'रोल / प्रवेश क्रमांक',
+    colStudentName: 'विद्यार्थी का नाम',
+    colClassSection: 'कक्षा एवं वर्ग',
+    colParentDetails: 'अभिभावक विवरण',
+    colSamagraBse: 'समग्र / BSE ID',
+    colActions: 'कार्यवाही',
+    profile360: '360° प्रोफाइल',
+    history: 'शैक्षणिक इतिहास',
+    noRecordsFound: 'कोई विद्यार्थी रिकॉर्ड नहीं मिला',
+    noRecordsDesc: 'आपकी खोज के अनुसार कोई विद्यार्थी नहीं मिला। कृपया फ़िल्टर बदलें या नया विद्यार्थी जोड़ें।',
+    registerFirstStudent: 'पहला विद्यार्थी पंजीकृत करें',
+    fatherPrefix: 'पिता:',
+    motherPrefix: 'माता:',
+    rollPrefix: 'रोल #',
+    admPrefix: 'प्रवेश:'
+  },
+
+  // Academic Sessions
+  sessions: {
+    title: 'शैक्षणिक सत्र प्रबंधन',
+    subtitle: 'शैक्षणिक वर्ष कॉन्फ़िगर करें, सक्रिय कार्य सत्र सेट करें और ऐतिहासिक रिकॉर्ड प्रबंधित करें',
+    newSessionBtn: 'नया शैक्षणिक सत्र',
+    searchPlaceholder: 'सत्र खोजें...',
+    total: 'कुल सत्र',
+    activeSession: 'सक्रिय सत्र',
+    colIndex: '#',
+    colSessionName: 'सत्र का नाम',
+    colDescription: 'विवरण / शीर्षक',
+    colStartDate: 'प्रारंभ दिनांक',
+    colEndDate: 'समाप्ति दिनांक',
+    colStatus: 'स्थिति',
+    colAction: 'कार्यवाही',
+    statusActive: 'सक्रिय',
+    statusArchived: 'पुरालेख (Archived)',
+    currentActive: 'सक्रिय सत्र',
+    currentSystemActive: 'सिस्टम में वर्तमान सक्रिय',
+    setAsActive: 'सक्रिय बनाएं',
+    activating: 'सक्रिय हो रहा है...',
+    createTitle: 'नया शैक्षणिक सत्र बनाएं',
+    sessionNameLabel: 'सत्र का नाम (उदा. 2026-27) *',
+    startDateLabel: 'प्रारंभ दिनांक *',
+    endDateLabel: 'समाप्ति दिनांक *',
+    descriptionLabel: 'विवरण / संक्षिप्त टिप्पणी',
+    setDefaultActive: 'डिफ़ॉल्ट सक्रिय सत्र के रूप में सेट करें',
+    createBtn: 'सत्र बनाएं',
+    creatingBtn: 'बनाया जा रहा है...',
+    noSessionsFound: 'कोई शैक्षणिक सत्र नहीं मिला',
+    clearSearchTip: 'कृपया अपना खोज शब्द हटाकर पुनः प्रयास करें'
+  },
+
+  // Classes & Sections
+  classesSections: {
+    title: 'कक्षाएं एवं वर्ग निर्देशिका',
+    subtitle: 'मानक म.प्र. बोर्ड पाठ्यक्रम कक्षाएं (1 से 12) एवं उनके आवंटित वर्ग कॉन्फ़िगर करें',
+    addSectionBtn: 'नया वर्ग जोड़ें',
+    selectClassLabel: 'कक्षा चुनें',
+    sectionsCount: 'आवंटित वर्ग (Sections)',
+    roomNo: 'कक्ष / हॉल',
+    classTeacher: 'कक्षा अध्यापक',
+    totalStudentsInClass: 'नामांकित विद्यार्थी'
+  },
+
+  // Subjects Master
+  subjects: {
+    title: 'विषय सूची मास्टर',
+    subtitle: 'म.प्र. बोर्ड निर्धारित सैद्धांतिक, प्रायोगिक और सीसीई आंतरिक मूल्यांकन विषय प्रबंधित करें',
+    addNewBtn: 'नया विषय जोड़ें',
+    searchPlaceholder: 'विषय का नाम या कोड से खोजें...',
+    allClasses: 'सभी कक्षाएं',
+    compulsory: 'अनिवार्य',
+    elective: 'ऐच्छिक',
+    additional: 'अतिरिक्त'
   }
 };
+

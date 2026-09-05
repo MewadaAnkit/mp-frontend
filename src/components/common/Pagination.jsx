@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Pagination({
   currentPage = 1,
@@ -10,6 +11,7 @@ export default function Pagination({
   pageSizeOptions = [10, 25, 50, 100],
   className = ''
 }) {
+  const { isHindi } = useLanguage();
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(totalItems, currentPage * pageSize);
@@ -43,14 +45,24 @@ export default function Pagination({
       {/* Items count & Per Page Selector */}
       <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 font-medium">
         <span>
-          Showing <strong className="text-slate-800 dark:text-slate-200 font-bold">{startItem}</strong> to{' '}
-          <strong className="text-slate-800 dark:text-slate-200 font-bold">{endItem}</strong> of{' '}
-          <strong className="text-slate-800 dark:text-slate-200 font-bold">{totalItems}</strong> entries
+          {isHindi ? (
+            <>
+              कुल <strong className="text-slate-800 dark:text-slate-200 font-bold font-mono">{totalItems}</strong> में से{' '}
+              <strong className="text-slate-800 dark:text-slate-200 font-bold font-mono">{startItem}</strong> से{' '}
+              <strong className="text-slate-800 dark:text-slate-200 font-bold font-mono">{endItem}</strong> प्रविष्टियां
+            </>
+          ) : (
+            <>
+              Showing <strong className="text-slate-800 dark:text-slate-200 font-bold font-mono">{startItem}</strong> to{' '}
+              <strong className="text-slate-800 dark:text-slate-200 font-bold font-mono">{endItem}</strong> of{' '}
+              <strong className="text-slate-800 dark:text-slate-200 font-bold font-mono">{totalItems}</strong> entries
+            </>
+          )}
         </span>
 
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 dark:border-slate-700/60 pl-3">
-            <span className="text-slate-400">Per page:</span>
+            <span className="text-slate-400">{isHindi ? 'प्रति पृष्ठ:' : 'Per page:'}</span>
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
@@ -72,7 +84,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange && onPageChange(1)}
           disabled={currentPage <= 1}
-          title="First Page"
+          title={isHindi ? 'प्रथम पृष्ठ' : 'First Page'}
           className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition cursor-pointer"
         >
           <ChevronsLeft className="w-3.5 h-3.5" />
@@ -82,7 +94,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange && onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          title="Previous Page"
+          title={isHindi ? 'पिछला पृष्ठ' : 'Previous Page'}
           className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition cursor-pointer"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
@@ -112,7 +124,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange && onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages || totalPages === 0}
-          title="Next Page"
+          title={isHindi ? 'अगला पृष्ठ' : 'Next Page'}
           className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition cursor-pointer"
         >
           <ChevronRight className="w-3.5 h-3.5" />
@@ -122,7 +134,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange && onPageChange(totalPages)}
           disabled={currentPage >= totalPages || totalPages === 0}
-          title="Last Page"
+          title={isHindi ? 'अंतिम पृष्ठ' : 'Last Page'}
           className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition cursor-pointer"
         >
           <ChevronsRight className="w-3.5 h-3.5" />

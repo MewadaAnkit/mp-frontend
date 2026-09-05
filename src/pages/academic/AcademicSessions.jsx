@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import api from '../../api/client';
 import { useAcademic } from '../../context/AcademicContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { Calendar, Plus, CheckCircle2, Lock, Sparkles, X, Clock, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AcademicSessions() {
   const { sessions, reloadMetadata } = useAcademic();
+  const { t, isHindi } = useLanguage();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -66,10 +68,12 @@ export default function AcademicSessions() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span>Academic Sessions Management</span>
+            <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <span>{t('sessions.title', 'Academic Sessions Management')}</span>
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Configure academic years and manage historical records</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            {t('sessions.subtitle', 'Configure academic years and manage historical records')}
+          </p>
         </div>
 
         <button
@@ -77,7 +81,7 @@ export default function AcademicSessions() {
           className="app-btn-primary"
         >
           <Plus className="w-4 h-4" />
-          <span>New Academic Session</span>
+          <span>{t('sessions.newSessionBtn', 'New Academic Session')}</span>
         </button>
       </div>
 
@@ -89,7 +93,7 @@ export default function AcademicSessions() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search sessions..."
+              placeholder={t('sessions.searchPlaceholder', 'Search sessions...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 dark:text-white"
@@ -97,7 +101,7 @@ export default function AcademicSessions() {
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm('')} 
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -105,11 +109,11 @@ export default function AcademicSessions() {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto text-xs text-slate-500 dark:text-slate-400">
-            <span>Total: <strong className="text-slate-900 dark:text-white font-bold">{sessions.length}</strong></span>
+            <span>{t('sessions.total', 'Total')}: <strong className="text-slate-900 dark:text-white font-bold">{sessions.length}</strong></span>
             <span>•</span>
             <span className="flex items-center gap-1">
-              Active: 
-              <strong className="text-blue-600 dark:text-blue-400 font-bold font-mono">
+              {t('sessions.activeSession', 'Active')}: 
+              <strong className="text-emerald-600 dark:text-emerald-400 font-bold font-mono">
                 {sessions.find(s => s.isCurrent)?.sessionName || 'None'}
               </strong>
             </span>
@@ -121,13 +125,13 @@ export default function AcademicSessions() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/90 dark:bg-[#131b2e]/80 border-b border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3.5 px-4 w-12 text-center">#</th>
-                <th className="py-3.5 px-4 min-w-[160px]">Session Name</th>
-                <th className="py-3.5 px-4 min-w-[200px]">Description</th>
-                <th className="py-3.5 px-4 min-w-[140px]">Start Date</th>
-                <th className="py-3.5 px-4 min-w-[140px]">End Date</th>
-                <th className="py-3.5 px-4 w-28 text-center">Status</th>
-                <th className="py-3.5 px-4 w-44 text-right">Action</th>
+                <th className="py-3.5 px-4 w-12 text-center">{t('sessions.colIndex', '#')}</th>
+                <th className="py-3.5 px-4 min-w-[160px]">{t('sessions.colSessionName', 'Session Name')}</th>
+                <th className="py-3.5 px-4 min-w-[200px]">{t('sessions.colDescription', 'Description')}</th>
+                <th className="py-3.5 px-4 min-w-[140px]">{t('sessions.colStartDate', 'Start Date')}</th>
+                <th className="py-3.5 px-4 min-w-[140px]">{t('sessions.colEndDate', 'End Date')}</th>
+                <th className="py-3.5 px-4 w-28 text-center">{t('sessions.colStatus', 'Status')}</th>
+                <th className="py-3.5 px-4 w-44 text-right">{t('sessions.colAction', 'Action')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
@@ -135,8 +139,14 @@ export default function AcademicSessions() {
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 dark:text-slate-500">
                     <Calendar className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    <p className="font-semibold text-slate-600 dark:text-slate-400">No academic sessions found</p>
-                    {searchTerm && <p className="text-[11px] mt-1">Try clearing your search query</p>}
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">
+                      {t('sessions.noSessionsFound', 'No academic sessions found')}
+                    </p>
+                    {searchTerm && (
+                      <p className="text-[11px] mt-1">
+                        {t('sessions.clearSearchTip', 'Try clearing your search query')}
+                      </p>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -145,7 +155,7 @@ export default function AcademicSessions() {
                     key={sess._id}
                     className={`transition-colors duration-150 ${
                       sess.isCurrent
-                        ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/60 dark:hover:bg-blue-950/30'
+                        ? 'bg-emerald-50/40 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30'
                         : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
                     }`}
                   >
@@ -159,7 +169,7 @@ export default function AcademicSessions() {
                       <div className="flex items-center gap-2.5">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold shrink-0 ${
                           sess.isCurrent
-                            ? 'bg-blue-600 text-white shadow-xs shadow-blue-500/30'
+                            ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-500/30'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                         }`}>
                           <Calendar className="w-4 h-4" />
@@ -169,8 +179,8 @@ export default function AcademicSessions() {
                             {sess.sessionName}
                           </span>
                           {sess.isCurrent && (
-                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                              Current System Active
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                              {t('sessions.currentSystemActive', 'Current System Active')}
                             </span>
                           )}
                         </div>
@@ -180,7 +190,7 @@ export default function AcademicSessions() {
                     {/* Description */}
                     <td className="py-3.5 px-4">
                       <span className="text-slate-700 dark:text-slate-300 font-medium">
-                        {sess.description || 'Academic Year'}
+                        {sess.description || (isHindi ? 'शैक्षणिक वर्ष' : 'Academic Year')}
                       </span>
                     </td>
 
@@ -210,11 +220,11 @@ export default function AcademicSessions() {
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-500/20">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                           <Sparkles className="w-3 h-3" />
-                          ACTIVE
+                          {t('sessions.statusActive', 'ACTIVE')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700/60">
-                          ARCHIVED
+                          {t('sessions.statusArchived', 'ARCHIVED')}
                         </span>
                       )}
                     </td>
@@ -224,17 +234,21 @@ export default function AcademicSessions() {
                       {sess.isCurrent ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-500/20">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Active Session</span>
+                          <span>{t('sessions.currentActive', 'Active Session')}</span>
                         </span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleSetCurrent(sess._id, sess.sessionName)}
                           disabled={actionLoadingId === sess._id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg text-blue-600 dark:text-blue-400 hover:text-white hover:bg-blue-600 dark:hover:bg-blue-600 border border-blue-200 dark:border-blue-500/30 hover:border-transparent transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-white hover:bg-emerald-600 dark:hover:bg-emerald-600 border border-emerald-200 dark:border-emerald-500/30 hover:border-transparent transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>{actionLoadingId === sess._id ? 'Activating...' : 'Set as Active'}</span>
+                          <span>
+                            {actionLoadingId === sess._id 
+                              ? t('sessions.activating', 'Activating...') 
+                              : t('sessions.setAsActive', 'Set as Active')}
+                          </span>
                         </button>
                       )}
                     </td>
@@ -251,7 +265,9 @@ export default function AcademicSessions() {
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="app-card-elevated p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Create Academic Session</h2>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                {t('sessions.createTitle', 'Create Academic Session')}
+              </h2>
               <button
                 onClick={() => setShowModal(false)}
                 className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg cursor-pointer"
@@ -262,7 +278,9 @@ export default function AcademicSessions() {
 
             <form onSubmit={handleCreate} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Session Name *</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">
+                  {t('sessions.sessionNameLabel', 'Session Name *')}
+                </label>
                 <input
                   type="text"
                   required
@@ -275,7 +293,9 @@ export default function AcademicSessions() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Start Date *</label>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">
+                    {t('sessions.startDateLabel', 'Start Date *')}
+                  </label>
                   <input
                     type="date"
                     required
@@ -285,7 +305,9 @@ export default function AcademicSessions() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">End Date *</label>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">
+                    {t('sessions.endDateLabel', 'End Date *')}
+                  </label>
                   <input
                     type="date"
                     required
@@ -297,7 +319,9 @@ export default function AcademicSessions() {
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">Description</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-semibold">
+                  {t('sessions.descriptionLabel', 'Description')}
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Academic Year 2026-2027"
@@ -316,7 +340,7 @@ export default function AcademicSessions() {
                   className="rounded app-input cursor-pointer"
                 />
                 <label htmlFor="isCur" className="text-slate-700 dark:text-slate-300 font-semibold cursor-pointer">
-                  Set as default active session
+                  {t('sessions.setDefaultActive', 'Set as default active session')}
                 </label>
               </div>
 
@@ -326,14 +350,16 @@ export default function AcademicSessions() {
                   onClick={() => setShowModal(false)}
                   className="app-btn-secondary"
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="app-btn-primary disabled:opacity-50"
                 >
-                  {submitting ? 'Creating...' : 'Create Session'}
+                  {submitting 
+                    ? t('sessions.creatingBtn', 'Creating...') 
+                    : t('sessions.createBtn', 'Create Session')}
                 </button>
               </div>
             </form>

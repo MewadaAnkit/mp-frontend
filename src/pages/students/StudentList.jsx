@@ -205,20 +205,22 @@ export default function StudentList() {
 
   const columns = [
     {
-      header: 'Roll / Adm',
+      header: t('students.colRollAdm', 'Roll / Adm'),
       sortable: true,
       sortKey: 'currentRollNo',
       accessor: (st) => (
         <div>
-          <span className="font-extrabold text-blue-600 dark:text-blue-400">Roll #{st.currentRollNo}</span>
+          <span className="font-extrabold text-blue-600 dark:text-blue-400">
+            {t('students.rollPrefix', 'Roll #')}{st.currentRollNo}
+          </span>
           <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-mono font-semibold">
-            Adm: {st.admissionNo}
+            {t('students.admPrefix', 'Adm:')} {st.admissionNo}
           </span>
         </div>
       )
     },
     {
-      header: 'Student Name',
+      header: t('students.colStudentName', 'Student Name'),
       sortable: true,
       sortKey: 'studentName',
       accessor: (st) => (
@@ -231,33 +233,33 @@ export default function StudentList() {
       )
     },
     {
-      header: 'Class & Section',
+      header: t('students.colClassSection', 'Class & Section'),
       sortable: true,
       sortKey: 'currentClass',
       accessor: (st) => (
         <div>
           <span className="font-bold text-slate-800 dark:text-slate-200">
-            Class {st.currentClass} - '{st.currentSection}'
+            {isHindi ? 'कक्षा' : 'Class'} {st.currentClass} - '{st.currentSection}'
           </span>
           {st.currentStream && (
             <span className="block text-[10px] text-purple-600 dark:text-purple-400 font-extrabold">
-              Stream: {st.currentStream}
+              {isHindi ? 'संकाय' : 'Stream'}: {st.currentStream}
             </span>
           )}
         </div>
       )
     },
     {
-      header: 'Parent Details',
+      header: t('students.colParentDetails', 'Parent Details'),
       accessor: (st) => (
         <div>
-          <p className="text-slate-700 dark:text-slate-300 font-medium">F: {st.fatherName || '—'}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">M: {st.motherName || '—'}</p>
+          <p className="text-slate-700 dark:text-slate-300 font-medium">{t('students.fatherPrefix', 'F:')} {st.fatherName || '—'}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('students.motherPrefix', 'M:')} {st.motherName || '—'}</p>
         </div>
       )
     },
     {
-      header: 'Samagra / BSE ID',
+      header: t('students.colSamagraBse', 'Samagra / BSE ID'),
       accessor: (st) => (
         <div>
           <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{st.samagraId || '—'}</span>
@@ -270,7 +272,7 @@ export default function StudentList() {
       )
     },
     {
-      header: 'Actions',
+      header: t('students.colActions', 'Actions'),
       className: 'text-right',
       accessor: (st) => (
         <div className="flex items-center justify-end gap-1.5">
@@ -279,11 +281,11 @@ export default function StudentList() {
             className="app-btn-primary text-xs py-1.5 px-3"
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>360° Profile</span>
+            <span>{t('students.profile360', '360° Profile')}</span>
           </button>
           <button
             onClick={() => viewStudentHistory(st._id)}
-            title="View Academic History"
+            title={t('students.history', 'Academic History')}
             className="app-btn-secondary text-xs py-1.5 px-2.5"
           >
             <History className="w-3.5 h-3.5" />
@@ -300,10 +302,10 @@ export default function StudentList() {
         title={t('students.title', 'Student Management Directory')}
         subtitle={t('students.subtitle', 'Complete student roster with historical session tracking and 360° academic progression')}
         icon={Users}
-        breadcrumbs={[{ label: 'Students' }, { label: 'Directory' }]}
+        breadcrumbs={[{ label: isHindi ? 'विद्यार्थी' : 'Students' }, { label: isHindi ? 'निर्देशिका' : 'Directory' }]}
         badge={
           <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
-            {students.length} Total Students
+            {students.length} {t('students.totalStudents', 'Total Students')}
           </span>
         }
         actions={
@@ -313,14 +315,14 @@ export default function StudentList() {
               className="app-btn-secondary text-xs"
             >
               <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Bulk Import</span>
+              <span>{t('students.bulkImport', 'Bulk Import')}</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="app-btn-primary text-xs"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Student</span>
+              <span>{t('students.addStudent', 'Add Student')}</span>
             </button>
           </div>
         }
@@ -333,11 +335,11 @@ export default function StudentList() {
         loading={loading}
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
-        searchPlaceholder="Search by Name, Admission No, Samagra ID, Roll No..."
+        searchPlaceholder={t('students.searchPlaceholder', 'Search by Name, Admission No, Samagra ID, Roll No...')}
         emptyIcon={Users}
-        emptyTitle="No student records found"
-        emptyDescription="No students matched your search criteria. Try modifying your filter options or add a new student."
-        emptyActionLabel="Register First Student"
+        emptyTitle={t('students.noRecordsFound', 'No student records found')}
+        emptyDescription={t('students.noRecordsDesc', 'No students matched your search criteria. Try modifying your filter options or add a new student.')}
+        emptyActionLabel={t('students.registerFirstStudent', 'Register First Student')}
         onEmptyAction={() => setShowAddModal(true)}
         filterControls={
           <div className="flex items-center gap-2 flex-wrap">
@@ -346,10 +348,10 @@ export default function StudentList() {
               onChange={(e) => setSelectedClass(e.target.value)}
               className="app-input text-xs font-bold min-w-[120px]"
             >
-              <option value="ALL">All Classes</option>
+              <option value="ALL">{t('students.allClasses', 'All Classes')}</option>
               {((classes && classes.length > 0) ? classes : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(c => ({ _id: c, className: c, displayName: `Class ${c}` }))).map((c) => (
                 <option key={c._id || c.className} value={c.className}>
-                  {c.displayName || `Class ${c.className}`}
+                  {c.displayName ? (isHindi ? c.displayName.replace('Class', 'कक्षा') : c.displayName) : `${isHindi ? 'कक्षा' : 'Class'} ${c.className}`}
                 </option>
               ))}
             </select>
@@ -359,11 +361,11 @@ export default function StudentList() {
               onChange={(e) => setSelectedSection(e.target.value)}
               className="app-input text-xs font-bold min-w-[110px]"
             >
-              <option value="ALL">All Sections</option>
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
-              <option value="C">Section C</option>
-              <option value="D">Section D</option>
+              <option value="ALL">{t('students.allSections', 'All Sections')}</option>
+              <option value="A">{isHindi ? 'वर्ग A' : 'Section A'}</option>
+              <option value="B">{isHindi ? 'वर्ग B' : 'Section B'}</option>
+              <option value="C">{isHindi ? 'वर्ग C' : 'Section C'}</option>
+              <option value="D">{isHindi ? 'वर्ग D' : 'Section D'}</option>
             </select>
           </div>
         }

@@ -309,5 +309,90 @@ export default {
     statusPublished: 'PUBLISHED',
     statusCompleted: 'COMPLETED',
     conflictWarningTitle: 'Scheduling Conflicts Found'
+  },
+
+  // Students Directory
+  students: {
+    title: 'Student Management Directory',
+    subtitle: 'Complete student roster with historical session tracking and 360° academic progression',
+    totalStudents: 'Total Students',
+    bulkImport: 'Bulk Import',
+    addStudent: 'Add Student',
+    searchPlaceholder: 'Search by Name, Admission No, Samagra ID, Roll No...',
+    allClasses: 'All Classes',
+    allSections: 'All Sections',
+    colRollAdm: 'Roll / Adm',
+    colStudentName: 'Student Name',
+    colClassSection: 'Class & Section',
+    colParentDetails: 'Parent Details',
+    colSamagraBse: 'Samagra / BSE ID',
+    colActions: 'Actions',
+    profile360: '360° Profile',
+    history: 'Academic History',
+    noRecordsFound: 'No student records found',
+    noRecordsDesc: 'No students matched your search criteria. Try modifying your filter options or add a new student.',
+    registerFirstStudent: 'Register First Student',
+    fatherPrefix: 'F:',
+    motherPrefix: 'M:',
+    rollPrefix: 'Roll #',
+    admPrefix: 'Adm:'
+  },
+
+  // Academic Sessions
+  sessions: {
+    title: 'Academic Sessions Management',
+    subtitle: 'Configure academic years, set active working session, and manage historical records',
+    newSessionBtn: 'New Academic Session',
+    searchPlaceholder: 'Search sessions...',
+    total: 'Total',
+    activeSession: 'Active',
+    colIndex: '#',
+    colSessionName: 'Session Name',
+    colDescription: 'Description',
+    colStartDate: 'Start Date',
+    colEndDate: 'End Date',
+    colStatus: 'Status',
+    colAction: 'Action',
+    statusActive: 'ACTIVE',
+    statusArchived: 'ARCHIVED',
+    currentActive: 'Active Session',
+    currentSystemActive: 'Current System Active',
+    setAsActive: 'Set as Active',
+    activating: 'Activating...',
+    createTitle: 'Create Academic Session',
+    sessionNameLabel: 'Session Name *',
+    startDateLabel: 'Start Date *',
+    endDateLabel: 'End Date *',
+    descriptionLabel: 'Description',
+    setDefaultActive: 'Set as default active session',
+    createBtn: 'Create Session',
+    creatingBtn: 'Creating...',
+    noSessionsFound: 'No academic sessions found',
+    clearSearchTip: 'Try clearing your search query'
+  },
+
+  // Classes & Sections
+  classesSections: {
+    title: 'Classes & Sections Directory',
+    subtitle: 'Configure standard MP Board curriculum classes (1 to 12) and their assigned sections',
+    addSectionBtn: 'Add New Section',
+    selectClassLabel: 'Select Class',
+    sectionsCount: 'Assigned Sections',
+    roomNo: 'Room / Hall',
+    classTeacher: 'Class Teacher',
+    totalStudentsInClass: 'Enrolled Students'
+  },
+
+  // Subjects Master
+  subjects: {
+    title: 'Subjects Master Catalog',
+    subtitle: 'Manage MP Board prescribed theory, practical and internal assessment subjects',
+    addNewBtn: 'Add New Subject',
+    searchPlaceholder: 'Search subjects by name or code...',
+    allClasses: 'All Classes',
+    compulsory: 'Compulsory',
+    elective: 'Elective',
+    additional: 'Additional'
   }
 };
+
